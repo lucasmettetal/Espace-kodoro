@@ -48,9 +48,9 @@ const events = [
 ];
 
 const typeColors: Record<string, string> = {
-  'Soirée': '#C06040',
+  'Soirée': '#C9A700',
   'Culture': '#5C7460',
-  'Formation': '#1C1612',
+  'Formation': '#5F3636',
   'Bien-être': '#8B7355',
 };
 
@@ -69,7 +69,7 @@ export function Events() {
                 fontSize: '0.7rem',
                 letterSpacing: '0.14em',
                 textTransform: 'uppercase',
-                color: '#C06040',
+                color: '#C9A700',
                 marginBottom: '1rem',
               }}
             >
@@ -81,13 +81,13 @@ export function Events() {
                 fontSize: 'clamp(2rem, 4vw, 3.25rem)',
                 fontWeight: 700,
                 lineHeight: 1.15,
-                color: '#1C1612',
+                color: '#5F3636',
                 margin: 0,
                 letterSpacing: '-0.01em',
               }}
             >
               À venir chez<br />
-              <em style={{ fontStyle: 'italic', color: '#C06040' }}>Espace Ködörö</em>
+              <em style={{ fontStyle: 'italic', color: '#C9A700' }}>Espace Ködörö</em>
             </h2>
           </div>
           <a
@@ -116,17 +116,16 @@ export function Events() {
               key={event.id}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '80px 1fr auto',
                 gap: '2rem',
                 padding: '2rem 0',
-                borderBottom: '1px solid rgba(28,22,18,0.1)',
-                borderTop: i === 0 ? '1px solid rgba(28,22,18,0.1)' : 'none',
+                borderBottom: '1px solid rgba(95,54,54,0.1)',
+                borderTop: i === 0 ? '1px solid rgba(95,54,54,0.1)' : 'none',
                 cursor: 'pointer',
                 transition: 'background 0.2s',
-                background: hovered === event.id ? 'rgba(192,96,64,0.04)' : 'transparent',
+                background: hovered === event.id ? 'rgba(201,167,0,0.06)' : 'transparent',
                 alignItems: 'center',
               }}
-              className="max-sm:grid-cols-1"
+              className="grid-cols-[80px_1fr_auto] max-sm:grid-cols-1"
               onMouseEnter={() => setHovered(event.id)}
               onMouseLeave={() => setHovered(null)}
             >
@@ -149,7 +148,7 @@ export function Events() {
                     fontFamily: "'Playfair Display', Georgia, serif",
                     fontSize: '1.4rem',
                     fontWeight: 700,
-                    color: '#C06040',
+                    color: '#C9A700',
                     lineHeight: 1,
                   }}
                 >
@@ -177,7 +176,7 @@ export function Events() {
                       letterSpacing: '0.1em',
                       textTransform: 'uppercase',
                       color: '#F4EFE4',
-                      background: typeColors[event.type] ?? '#1C1612',
+                      background: typeColors[event.type] ?? '#5F3636',
                       padding: '0.2rem 0.6rem',
                     }}
                   >
@@ -198,7 +197,7 @@ export function Events() {
                     fontFamily: "'Playfair Display', Georgia, serif",
                     fontSize: '1.1rem',
                     fontWeight: 700,
-                    color: '#1C1612',
+                    color: '#5F3636',
                     margin: 0,
                     marginBottom: '0.4rem',
                   }}
@@ -225,7 +224,7 @@ export function Events() {
                     fontFamily: "'Playfair Display', Georgia, serif",
                     fontSize: '1.2rem',
                     fontWeight: 700,
-                    color: '#1C1612',
+                    color: '#5F3636',
                     marginBottom: '0.75rem',
                   }}
                 >
@@ -235,8 +234,8 @@ export function Events() {
                   href="#contact"
                   style={{
                     display: 'inline-block',
-                    border: '1px solid rgba(28,22,18,0.25)',
-                    color: '#1C1612',
+                    border: '1px solid rgba(95,54,54,0.25)',
+                    color: '#5F3636',
                     fontFamily: "'DM Sans', sans-serif",
                     fontSize: '0.75rem',
                     fontWeight: 500,
@@ -247,8 +246,8 @@ export function Events() {
                     transition: 'background 0.2s, color 0.2s',
                     whiteSpace: 'nowrap',
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#C06040'; e.currentTarget.style.color = '#F4EFE4'; e.currentTarget.style.borderColor = '#C06040'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#1C1612'; e.currentTarget.style.borderColor = 'rgba(28,22,18,0.25)'; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#C9A700'; e.currentTarget.style.color = '#F4EFE4'; e.currentTarget.style.borderColor = '#C9A700'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#5F3636'; e.currentTarget.style.borderColor = 'rgba(95,54,54,0.25)'; }}
                 >
                   S'inscrire
                 </a>

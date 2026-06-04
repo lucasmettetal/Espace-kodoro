@@ -35,20 +35,19 @@ const footerLinks = [
 
 export function Footer() {
   return (
-    <footer style={{ background: '#1C1612', padding: '4rem clamp(2rem, 8vw, 8rem) 2.5rem' }}>
+    <footer style={{ background: '#5F3636', padding: '4rem clamp(2rem, 8vw, 8rem) 2.5rem' }}>
       <div style={{ maxWidth: 1280, margin: '0 auto' }}>
         {/* Top row */}
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr auto',
             gap: '2rem',
             alignItems: 'start',
             marginBottom: '3rem',
             paddingBottom: '3rem',
             borderBottom: '1px solid rgba(244,239,228,0.1)',
           }}
-          className="max-md:grid-cols-1"
+          className="grid-cols-[1fr_auto] max-md:grid-cols-1"
         >
           {/* Brand + réseaux sociaux */}
           <div>
@@ -69,9 +68,9 @@ export function Footer() {
               <img
                 src="/logo.jpg"
                 alt="Espace Ködörö"
-                style={{ height: 40, width: 40, borderRadius: '50%', display: 'block', objectFit: 'cover' }}
+                style={{ height: 40, width: 40, display: 'block', objectFit: 'contain' }}
               />
-              Espace <em style={{ fontStyle: 'italic', color: '#C06040' }}>Ködörö</em>
+              Espace <em style={{ fontStyle: 'italic', color: '#C9A700' }}>Ködörö</em>
             </a>
             <p
               style={{
@@ -109,7 +108,7 @@ export function Footer() {
                     transition: 'background 0.2s, color 0.2s',
                   }}
                   onMouseEnter={e => {
-                    e.currentTarget.style.background = '#C06040';
+                    e.currentTarget.style.background = '#C9A700';
                     e.currentTarget.style.color = '#F4EFE4';
                   }}
                   onMouseLeave={e => {

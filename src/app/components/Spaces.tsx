@@ -1,16 +1,16 @@
 const spaces = [
   {
-    id: 'coworking',
+    id: 'salle',
     number: '01',
-    label: 'Espace de travail',
-    title: 'Le Coworking',
+    label: 'Location de salle',
+    title: 'La Grande Salle',
     description:
-      'Un plateau de travail ouvert et modulable, pensé pour les indépendants, freelances et télétravailleurs. Équipé de postes de travail, connexion fibre, zones de réunion et espace détente.',
-    image: 'https://images.unsplash.com/photo-1694272604617-9c2ff92d5697?w=900&h=700&fit=crop&auto=format',
-    imageAlt: 'Espace coworking chaleureux',
-    features: ['Poste fixe ou nomade', 'Fibre haut débit', 'Salle de réunion', 'Cuisine & café', 'Imprimante'],
-    cta: 'Voir les tarifs',
-    ctaHref: '#tarifs',
+      'Un espace spacieux et lumineux, idéal pour accueillir vos événements, réunions et formations. Flexible, équipé et facilement modulable selon vos besoins. Ambiance chaleureuse garantie.',
+    image: '/hero.jpg',
+    imageAlt: 'Grande salle à location — Espace Ködörö',
+    features: ['Capacité jusqu\'à 80 personnes', 'Équipement complet', 'Espace modulable', 'Accès cuisine', 'Parking disponible'],
+    cta: 'Demander un devis',
+    ctaHref: '#contact',
     reversed: false,
   },
   {
@@ -23,15 +23,29 @@ const spaces = [
     image: '/espacezen.jpg',
     imageAlt: 'Cabinet Zen de l\'Espace Ködörö — table de massage et coin soin',
     features: ['Demi-journée ou journée', 'Table de massage', 'Confidentialité assurée', 'Accès thérapeutes adhérents'],
-    cta: 'Devenir thérapeute adhérent',
+    cta: 'En savoir plus',
     ctaHref: '#therapeutes',
     reversed: true,
+  },
+  {
+    id: 'coworking',
+    number: '03',
+    label: 'Espace de travail',
+    title: 'Le Coworking',
+    description:
+      'Un plateau de travail partagé, lumineux et modulable. Idéal pour les indépendants, freelances et télétravailleurs qui cherchent un cadre professionnel et convivial à Caussade.',
+    image: 'https://images.unsplash.com/photo-1694272604617-9c2ff92d5697?w=900&h=700&fit=crop&auto=format',
+    imageAlt: 'Espace coworking Ödörö',
+    features: ['Bureau fixe ou nomade', 'Fibre haut débit', 'Cuisine & café', 'Imprimante', 'Ambiance conviviale'],
+    cta: 'Voir les tarifs',
+    ctaHref: '#tarifs',
+    reversed: false,
   },
 ];
 
 export function Spaces() {
   return (
-    <section id="espaces" style={{ background: '#1C1612' }}>
+    <section id="espaces" style={{ background: '#5F3636' }}>
       {/* Section header */}
       <div style={{ padding: 'clamp(5rem, 10vw, 9rem) clamp(2rem, 8vw, 8rem) 0' }}>
         <div style={{ maxWidth: 1280, margin: '0 auto' }}>
@@ -41,7 +55,7 @@ export function Spaces() {
               fontSize: '0.7rem',
               letterSpacing: '0.14em',
               textTransform: 'uppercase',
-              color: '#C06040',
+              color: '#C9A700',
               marginBottom: '1rem',
             }}
           >
@@ -58,8 +72,8 @@ export function Spaces() {
               letterSpacing: '-0.01em',
             }}
           >
-            Des lieux qui inspirent<br />
-            <em style={{ fontStyle: 'italic', color: '#C06040' }}>la création et le soin</em>
+            Des espaces<br />
+            <em style={{ fontStyle: 'italic', color: '#C9A700' }}>prêts à vous accueillir</em>
           </h2>
         </div>
       </div>
@@ -73,11 +87,10 @@ export function Spaces() {
             margin: '0 auto',
             padding: 'clamp(4rem, 8vw, 7rem) clamp(2rem, 8vw, 8rem)',
             display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
             gap: 'clamp(3rem, 6vw, 6rem)',
             alignItems: 'center',
           }}
-          className="max-md:grid-cols-1"
+          className="grid-cols-2 max-md:grid-cols-1"
         >
           {/* Image */}
           <div style={{ position: 'relative', order: space.reversed ? 2 : 1 }}>
@@ -101,7 +114,7 @@ export function Spaces() {
                 fontFamily: "'DM Mono', monospace",
                 fontSize: '7rem',
                 fontWeight: 300,
-                color: 'rgba(192,96,64,0.15)',
+                color: 'rgba(201,167,0,0.15)',
                 lineHeight: 1,
                 pointerEvents: 'none',
                 userSelect: 'none',
@@ -119,7 +132,7 @@ export function Spaces() {
                 fontSize: '0.65rem',
                 letterSpacing: '0.14em',
                 textTransform: 'uppercase',
-                color: '#C06040',
+                color: '#C9A700',
                 marginBottom: '1.25rem',
               }}
             >
@@ -164,7 +177,7 @@ export function Spaces() {
                     color: 'rgba(244,239,228,0.7)',
                   }}
                 >
-                  <span style={{ width: 5, height: 5, background: '#C06040', borderRadius: '50%', flexShrink: 0 }} />
+                  <span style={{ width: 5, height: 5, background: '#C9A700', borderRadius: '50%', flexShrink: 0 }} />
                   {f}
                 </li>
               ))}
@@ -185,7 +198,7 @@ export function Spaces() {
                 padding: '0.75rem 1.75rem',
                 transition: 'background 0.2s, border-color 0.2s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#C06040'; e.currentTarget.style.borderColor = '#C06040'; }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#C9A700'; e.currentTarget.style.borderColor = '#C9A700'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(244,239,228,0.25)'; }}
             >
               {space.cta}

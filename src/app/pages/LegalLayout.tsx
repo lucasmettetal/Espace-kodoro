@@ -15,7 +15,7 @@ export function LegalLayout({ title, subtitle, children }: { title: string; subt
       <header
         style={{
           background: '#F4EFE4',
-          borderBottom: '1px solid rgba(28,22,18,0.1)',
+          borderBottom: '1px solid rgba(95,54,54,0.1)',
           position: 'sticky',
           top: 0,
           zIndex: 50,
@@ -36,18 +36,18 @@ export function LegalLayout({ title, subtitle, children }: { title: string; subt
             <img
               src="/logo.jpg"
               alt="Espace Ködörö"
-              style={{ height: 48, width: 48, borderRadius: '50%', display: 'block', objectFit: 'cover' }}
+              style={{ height: 48, width: 48, display: 'block', objectFit: 'contain' }}
             />
             <span
               style={{
                 fontFamily: "'Playfair Display', Georgia, serif",
                 fontSize: '1.2rem',
                 fontWeight: 700,
-                color: '#1C1612',
+                color: '#5F3636',
                 letterSpacing: '-0.01em',
               }}
             >
-              Espace <em style={{ fontStyle: 'italic', color: '#C06040' }}>Ködörö</em>
+              Espace <em style={{ fontStyle: 'italic', color: '#C9A700' }}>Ködörö</em>
             </span>
           </Link>
 
@@ -84,7 +84,7 @@ export function LegalLayout({ title, subtitle, children }: { title: string; subt
             fontSize: '0.7rem',
             letterSpacing: '0.14em',
             textTransform: 'uppercase',
-            color: '#C06040',
+            color: '#C9A700',
             marginBottom: '1rem',
           }}
         >
@@ -96,7 +96,7 @@ export function LegalLayout({ title, subtitle, children }: { title: string; subt
             fontSize: 'clamp(2rem, 4vw, 3rem)',
             fontWeight: 700,
             lineHeight: 1.15,
-            color: '#1C1612',
+            color: '#5F3636',
             margin: 0,
             marginBottom: subtitle ? '0.75rem' : '2.5rem',
             letterSpacing: '-0.01em',
@@ -143,7 +143,7 @@ export function LegalSection({ heading, children }: { heading: string; children:
           fontFamily: "'Playfair Display', Georgia, serif",
           fontSize: '1.4rem',
           fontWeight: 700,
-          color: '#1C1612',
+          color: '#5F3636',
           margin: 0,
           marginBottom: '1rem',
         }}
@@ -159,8 +159,8 @@ export function ToComplete({ children }: { children: ReactNode }) {
   return (
     <span
       style={{
-        background: 'rgba(192,96,64,0.12)',
-        color: '#A8503A',
+        background: 'rgba(201,167,0,0.12)',
+        color: '#D4B930',
         padding: '0.1rem 0.4rem',
         borderRadius: 3,
         fontWeight: 500,

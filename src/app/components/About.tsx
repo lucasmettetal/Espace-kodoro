@@ -10,7 +10,7 @@ export function About() {
     <section
       id="about"
       style={{
-        background: '#1C1612',
+        background: '#5F3636',
         color: '#F4EFE4',
         padding: 'clamp(5rem, 10vw, 9rem) clamp(2rem, 8vw, 8rem)',
       }}
@@ -19,11 +19,10 @@ export function About() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 1.6fr',
             gap: 'clamp(3rem, 6vw, 6rem)',
             alignItems: 'start',
           }}
-          className="max-md:grid-cols-1"
+          className="grid-cols-[1fr_1.6fr] max-md:grid-cols-1"
         >
           {/* Left */}
           <motion.div
@@ -39,7 +38,7 @@ export function About() {
                 fontSize: '0.7rem',
                 letterSpacing: '0.14em',
                 textTransform: 'uppercase',
-                color: '#C06040',
+                color: '#C9A700',
                 marginBottom: '1.5rem',
               }}
             >
@@ -57,14 +56,14 @@ export function About() {
                 letterSpacing: '-0.01em',
               }}
             >
-              Un lieu où tout le monde<br />
-              <em style={{ fontStyle: 'italic', color: '#C06040' }}>trouve sa place</em>
+              Un espace<br />
+              <em style={{ fontStyle: 'italic', color: '#C9A700' }}>pour vos projets</em>
             </h2>
             <div
               style={{
                 width: 48,
                 height: 1,
-                background: '#C06040',
+                background: '#C9A700',
                 marginBottom: '2rem',
               }}
             />
@@ -81,7 +80,7 @@ export function About() {
               <em style={{ color: 'rgba(244,239,228,0.9)', fontStyle: 'normal' }}>
                 "univers partagés"
               </em>
-              . Un nom qui résume parfaitement notre vision.
+              . Depuis 2020, nous accueillons vos événements, réunions, formations et moments spéciaux dans une ambiance chaleureuse et bienveillante.
             </p>
           </motion.div>
 
@@ -103,27 +102,24 @@ export function About() {
                 lineHeight: 1.7,
                 color: 'rgba(244,239,228,0.85)',
                 margin: 0,
-                borderLeft: '2px solid #C06040',
+                borderLeft: '2px solid #C9A700',
                 paddingLeft: '2rem',
               }}
             >
-              "Un espace vivant au cœur de Caussade, où professionnels,
-              thérapeutes et créateurs se retrouvent pour travailler, soigner
-              et créer ensemble."
+              "Une salle spacieuse au cœur de Caussade, disponible pour vos réunions, formations, événements et occasions spéciales. Un lieu de partage et de convivialité."
             </p>
 
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 1fr 1fr',
                 gap: '2rem',
               }}
-              className="max-sm:grid-cols-1"
+              className="grid-cols-3 max-sm:grid-cols-1"
             >
               {[
-                { value: '3+', label: 'Espaces disponibles' },
-                { value: '10+', label: 'Thérapeutes adhérents' },
-                { value: '2020', label: 'Année de création' },
+                { value: '80+', label: 'Personnes max' },
+                { value: '2', label: 'Espaces à louer' },
+                { value: '2020', label: 'Depuis' },
               ].map((stat) => (
                 <div key={stat.label} style={{ borderTop: '1px solid rgba(244,239,228,0.12)', paddingTop: '1.5rem' }}>
                   <div
@@ -131,7 +127,7 @@ export function About() {
                       fontFamily: "'Playfair Display', Georgia, serif",
                       fontSize: 'clamp(2rem, 3vw, 2.75rem)',
                       fontWeight: 700,
-                      color: '#C06040',
+                      color: '#C9A700',
                       lineHeight: 1,
                       marginBottom: '0.5rem',
                     }}
@@ -162,8 +158,8 @@ export function About() {
               }}
             >
               Installés au 25 boulevard Didier Rey à Caussade, nous accueillons
-              indépendants, professions de santé, formateurs et communauté locale
-              dans un cadre bienveillant, ouvert et stimulant.
+              entreprises, associations, particuliers et professionnels pour vos événements,
+              formations, réunions et occasions spéciales dans un cadre bienveillant et convivial.
             </p>
           </motion.div>
         </div>

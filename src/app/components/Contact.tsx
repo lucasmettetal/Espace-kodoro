@@ -56,7 +56,7 @@ export function Contact() {
               fontSize: '0.7rem',
               letterSpacing: '0.14em',
               textTransform: 'uppercase',
-              color: '#C06040',
+              color: '#C9A700',
               marginBottom: '1rem',
             }}
           >
@@ -68,24 +68,23 @@ export function Contact() {
               fontSize: 'clamp(2rem, 4vw, 3.25rem)',
               fontWeight: 700,
               lineHeight: 1.15,
-              color: '#1C1612',
+              color: '#5F3636',
               margin: 0,
               letterSpacing: '-0.01em',
             }}
           >
             Parlons de votre projet<br />
-            <em style={{ fontStyle: 'italic', color: '#C06040' }}>ensemble</em>
+            <em style={{ fontStyle: 'italic', color: '#C9A700' }}>ensemble</em>
           </h2>
         </div>
 
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 1.5fr',
             gap: 'clamp(3rem, 6vw, 6rem)',
             alignItems: 'start',
           }}
-          className="max-md:grid-cols-1"
+          className="grid-cols-[1fr_1.5fr] max-md:grid-cols-1"
         >
           {/* Left: info + carte */}
           <div>
@@ -98,11 +97,11 @@ export function Contact() {
                       style={{
                         width: 40,
                         height: 40,
-                        background: 'rgba(192,96,64,0.1)',
+                        background: 'rgba(201,167,0,0.1)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: '#C06040',
+                        color: '#C9A700',
                         flexShrink: 0,
                       }}
                     >
@@ -126,7 +125,7 @@ export function Contact() {
                           fontFamily: "'DM Sans', sans-serif",
                           fontSize: '0.925rem',
                           lineHeight: 1.6,
-                          color: '#1C1612',
+                          color: '#5F3636',
                           margin: 0,
                           whiteSpace: 'pre-line',
                         }}
@@ -158,7 +157,7 @@ export function Contact() {
                   position: 'absolute',
                   bottom: '0.75rem',
                   right: '0.75rem',
-                  background: '#1C1612',
+                  background: '#5F3636',
                   color: '#F4EFE4',
                   fontFamily: "'DM Sans', sans-serif",
                   fontSize: '0.75rem',
@@ -209,8 +208,8 @@ export function Contact() {
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 {/* Nom + Email */}
                 <div
-                  style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}
-                  className="max-sm:grid-cols-1"
+                  style={{ display: 'grid', gap: '1rem' }}
+                  className="grid-cols-2 max-sm:grid-cols-1"
                 >
                   <div>
                     <label
@@ -240,7 +239,7 @@ export function Contact() {
                         padding: '0.875rem 1rem',
                         fontFamily: "'DM Sans', sans-serif",
                         fontSize: '0.9rem',
-                        color: '#1C1612',
+                        color: '#5F3636',
                         outline: 'none',
                         boxSizing: 'border-box',
                         transition: 'background 0.2s',
@@ -277,7 +276,7 @@ export function Contact() {
                         padding: '0.875rem 1rem',
                         fontFamily: "'DM Sans', sans-serif",
                         fontSize: '0.9rem',
-                        color: '#1C1612',
+                        color: '#5F3636',
                         outline: 'none',
                         boxSizing: 'border-box',
                         transition: 'background 0.2s',
@@ -316,7 +315,7 @@ export function Contact() {
                       padding: '0.875rem 1rem',
                       fontFamily: "'DM Sans', sans-serif",
                       fontSize: '0.9rem',
-                      color: form.subject ? '#1C1612' : '#6B5D52',
+                      color: form.subject ? '#5F3636' : '#6B5D52',
                       outline: 'none',
                       appearance: 'none',
                       cursor: 'pointer',
@@ -361,7 +360,7 @@ export function Contact() {
                       padding: '0.875rem 1rem',
                       fontFamily: "'DM Sans', sans-serif",
                       fontSize: '0.9rem',
-                      color: '#1C1612',
+                      color: '#5F3636',
                       outline: 'none',
                       resize: 'vertical',
                       boxSizing: 'border-box',
@@ -377,7 +376,7 @@ export function Contact() {
                     style={{
                       fontFamily: "'DM Sans', sans-serif",
                       fontSize: '0.85rem',
-                      color: '#C06040',
+                      color: '#C9A700',
                       margin: 0,
                     }}
                   >
@@ -389,7 +388,7 @@ export function Contact() {
                   type="submit"
                   disabled={loading}
                   style={{
-                    background: loading ? '#A8503A' : '#C06040',
+                    background: loading ? '#D4B930' : '#C9A700',
                     color: '#F4EFE4',
                     border: 'none',
                     padding: '1rem 2rem',
@@ -403,8 +402,8 @@ export function Contact() {
                     transition: 'background 0.2s',
                     opacity: loading ? 0.8 : 1,
                   }}
-                  onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#A8503A'; }}
-                  onMouseLeave={e => { if (!loading) e.currentTarget.style.background = '#C06040'; }}
+                  onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#D4B930'; }}
+                  onMouseLeave={e => { if (!loading) e.currentTarget.style.background = '#C9A700'; }}
                 >
                   {loading ? 'Envoi en cours…' : 'Envoyer le message'}
                 </button>

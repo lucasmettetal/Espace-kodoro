@@ -4,30 +4,30 @@ import { motion } from 'motion/react';
 const services = [
   {
     number: '01',
-    icon: Monitor,
-    title: 'Coworking',
+    icon: Calendar,
+    title: 'Location de salle',
     description:
-      'Un espace de travail partagé, lumineux et équipé. Bureau fixe, espace nomade, wifi haut débit, imprimante, cuisine. Idéal pour les indépendants et les télétravailleurs.',
-    tag: 'Travail & Productivité',
+      'Une salle spacieuse et lumineuse, équipée et flexible. Parfaite pour vos réunions, formations, séminaires, mariages, anniversaires et événements privés. Capacité jusqu\'à 80 personnes.',
+    tag: 'Événements & Réunions',
     href: '#espaces',
   },
   {
     number: '02',
     icon: Heart,
-    title: 'Cabinet Zen',
+    title: 'Cabinet de soin',
     description:
-      'Un cabinet de soin partagé pour les thérapeutes et professionnels de santé. Location à la demi-journée ou à la journée, dans un cadre apaisant et professionnel.',
+      'Un espace dédié aux thérapeutes et professionnels de santé. Consultations dans un cadre apaisant et professionnel. Location à la demi-journée ou à la journée.',
     tag: 'Santé & Bien-être',
     href: '#espaces',
   },
   {
     number: '03',
-    icon: Calendar,
-    title: 'Événements',
+    icon: Monitor,
+    title: 'Coworking',
     description:
-      'Des soirées, ateliers et rencontres communautaires réguliers. L\'aventure Ködörö, c\'est aussi une programmation vivante et des moments de partage.',
-    tag: 'Communauté & Culture',
-    href: '#activites-agenda',
+      'Un espace de travail partagé, lumineux et équipé. Wifi haut débit, bureau fixe ou nomade, cuisine. Idéal pour les indépendants, freelances et télétravailleurs.',
+    tag: 'Travail & Productivité',
+    href: '#tarifs',
   },
 ];
 
@@ -53,7 +53,7 @@ export function Services() {
                 fontSize: '0.7rem',
                 letterSpacing: '0.14em',
                 textTransform: 'uppercase',
-                color: '#C06040',
+                color: '#C9A700',
                 marginBottom: '1rem',
               }}
             >
@@ -65,13 +65,13 @@ export function Services() {
                 fontSize: 'clamp(2rem, 4vw, 3.25rem)',
                 fontWeight: 700,
                 lineHeight: 1.15,
-                color: '#1C1612',
+                color: '#5F3636',
                 margin: 0,
                 letterSpacing: '-0.01em',
               }}
             >
-              Trois univers,<br />
-              <em style={{ fontStyle: 'italic', color: '#C06040' }}>un même espace</em>
+              Une salle<br />
+              <em style={{ fontStyle: 'italic', color: '#C9A700' }}>polyvalente & accueillante</em>
             </h2>
           </div>
           <a
@@ -89,7 +89,7 @@ export function Services() {
               whiteSpace: 'nowrap',
               transition: 'color 0.2s',
             }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#C06040')}
+            onMouseEnter={e => (e.currentTarget.style.color = '#C9A700')}
             onMouseLeave={e => (e.currentTarget.style.color = '#6B5D52')}
           >
             En savoir plus →
@@ -100,10 +100,9 @@ export function Services() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
             gap: '2px',
           }}
-          className="max-lg:grid-cols-1"
+          className="grid-cols-3 max-lg:grid-cols-1"
         >
           {services.map((service, i) => {
             const Icon = service.icon;
@@ -136,7 +135,7 @@ export function Services() {
                     fontFamily: "'DM Mono', monospace",
                     fontSize: '4rem',
                     fontWeight: 300,
-                    color: 'rgba(28,22,18,0.05)',
+                    color: 'rgba(95,54,54,0.05)',
                     lineHeight: 1,
                     pointerEvents: 'none',
                     userSelect: 'none',
@@ -150,11 +149,11 @@ export function Services() {
                     style={{
                       width: 40,
                       height: 40,
-                      background: 'rgba(192,96,64,0.1)',
+                      background: 'rgba(201,167,0,0.1)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: '#C06040',
+                      color: '#C9A700',
                     }}
                   >
                     <Icon size={18} />
@@ -177,7 +176,7 @@ export function Services() {
                     fontFamily: "'Playfair Display', Georgia, serif",
                     fontSize: '1.6rem',
                     fontWeight: 700,
-                    color: '#1C1612',
+                    color: '#5F3636',
                     margin: 0,
                     marginBottom: '1rem',
                     letterSpacing: '-0.01em',
@@ -204,7 +203,7 @@ export function Services() {
                     fontFamily: "'DM Sans', sans-serif",
                     fontSize: '0.8rem',
                     fontWeight: 500,
-                    color: '#C06040',
+                    color: '#C9A700',
                     letterSpacing: '0.04em',
                   }}
                 >

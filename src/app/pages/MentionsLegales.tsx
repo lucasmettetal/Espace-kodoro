@@ -11,7 +11,7 @@ export function MentionsLegales() {
           Le présent site est édité par <strong>Espace Ködörö</strong>.<br />
           Forme juridique : Association régie par la loi du 1<sup>er</sup> juillet 1901<br />
           Adresse : 25 boulevard Didier Rey, 82300 Caussade, France<br />
-          Email : <a href="mailto:espacekodoro@gmail.com" style={{ color: '#C06040' }}>espacekodoro@gmail.com</a><br />
+          Email : <a href="mailto:espacekodoro@gmail.com" style={{ color: '#C9A700' }}>espacekodoro@gmail.com</a><br />
           Numéro SIREN : 848 786 265
         </p>
       </LegalSection>
@@ -19,7 +19,7 @@ export function MentionsLegales() {
       <LegalSection heading="2. Responsable de la publication">
         <p style={{ margin: 0 }}>
           Christelle Mettetal, en qualité de représentante légale d'Espace Ködörö.<br />
-          Contact : <a href="mailto:espacekodoro@gmail.com" style={{ color: '#C06040' }}>espacekodoro@gmail.com</a>
+          Contact : <a href="mailto:espacekodoro@gmail.com" style={{ color: '#C9A700' }}>espacekodoro@gmail.com</a>
         </p>
       </LegalSection>
 
@@ -44,7 +44,7 @@ export function MentionsLegales() {
         <p style={{ margin: 0 }}>
           La carte de localisation est fournie par <strong>OpenStreetMap</strong> (© les contributeurs
           OpenStreetMap). Le formulaire de contact est traité par le service <strong>Formspree</strong>
-          (voir notre <a href="/politique-de-confidentialite" style={{ color: '#C06040' }}>politique de confidentialité</a>).
+          (voir notre <a href="/politique-de-confidentialite" style={{ color: '#C9A700' }}>politique de confidentialité</a>).
         </p>
       </LegalSection>
 
@@ -59,7 +59,7 @@ export function MentionsLegales() {
       <LegalSection heading="7. Contact">
         <p style={{ margin: 0 }}>
           Pour toute question relative au site ou à ces mentions légales :{' '}
-          <a href="mailto:espacekodoro@gmail.com" style={{ color: '#C06040' }}>espacekodoro@gmail.com</a>.
+          <a href="mailto:espacekodoro@gmail.com" style={{ color: '#C9A700' }}>espacekodoro@gmail.com</a>.
         </p>
       </LegalSection>
     </LegalLayout>

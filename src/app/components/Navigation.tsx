@@ -30,7 +30,7 @@ export function Navigation() {
         zIndex: 50,
         transition: 'box-shadow 0.4s ease',
         background: '#F4EFE4',
-        boxShadow: scrolled ? '0 2px 12px rgba(28,22,18,0.12)' : '0 1px 0 rgba(28,22,18,0.08)',
+        boxShadow: scrolled ? '0 2px 12px rgba(95,54,54,0.12)' : '0 1px 0 rgba(95,54,54,0.08)',
       }}
     >
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 2rem' }}>
@@ -40,25 +40,24 @@ export function Navigation() {
             <img
               src="/logo.jpg"
               alt="Espace Ködörö"
-              style={{ height: 60, width: 60, borderRadius: '50%', display: 'block', objectFit: 'cover' }}
+              style={{ height: 60, width: 60, display: 'block', objectFit: 'contain' }}
             />
             <span
               style={{
                 fontFamily: "'Playfair Display', Georgia, serif",
                 fontSize: '1.2rem',
                 fontWeight: 700,
-                color: '#1C1612',
+                color: '#5F3636',
                 letterSpacing: '-0.01em',
               }}
             >
-              Espace <em style={{ fontStyle: 'italic', color: '#C06040' }}>Ködörö</em>
+              Espace <em style={{ fontStyle: 'italic', color: '#C9A700' }}>Ködörö</em>
             </span>
           </a>
 
           {/* Desktop links */}
           <ul
             style={{
-              display: 'flex',
               gap: '2.5rem',
               listStyle: 'none',
               margin: 0,
@@ -74,7 +73,7 @@ export function Navigation() {
                     fontFamily: "'DM Sans', sans-serif",
                     fontSize: '0.875rem',
                     fontWeight: 400,
-                    color: '#1C1612',
+                    color: '#5F3636',
                     textDecoration: 'none',
                     letterSpacing: '0.02em',
                     opacity: 0.75,
@@ -90,12 +89,12 @@ export function Navigation() {
           </ul>
 
           {/* CTA */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ alignItems: 'center', gap: '1rem' }} className="flex">
             <a
               href="#contact"
               className="hidden md:inline-flex"
               style={{
-                background: '#C06040',
+                background: '#C9A700',
                 color: '#F4EFE4',
                 fontFamily: "'DM Sans', sans-serif",
                 fontSize: '0.875rem',
@@ -106,8 +105,8 @@ export function Navigation() {
                 padding: '0.6rem 1.5rem',
                 transition: 'background 0.2s',
               }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#A8503A')}
-              onMouseLeave={e => (e.currentTarget.style.background = '#C06040')}
+              onMouseEnter={e => (e.currentTarget.style.background = '#D4B930')}
+              onMouseLeave={e => (e.currentTarget.style.background = '#C9A700')}
             >
               Réserver
             </a>
@@ -116,7 +115,7 @@ export function Navigation() {
             <button
               className="md:hidden"
               onClick={() => setMenuOpen(!menuOpen)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#1C1612' }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#5F3636' }}
               aria-label="Menu"
             >
               {menuOpen ? <X size={22} /> : <Menu size={22} />}
@@ -127,7 +126,7 @@ export function Navigation() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div style={{ background: '#F4EFE4', borderTop: '1px solid rgba(28,22,18,0.1)', padding: '1.5rem 2rem' }}>
+        <div style={{ background: '#F4EFE4', borderTop: '1px solid rgba(95,54,54,0.1)', padding: '1.5rem 2rem' }}>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {navLinks.map((link) => (
               <li key={link.href}>
@@ -137,7 +136,7 @@ export function Navigation() {
                   style={{
                     fontFamily: "'DM Sans', sans-serif",
                     fontSize: '1rem',
-                    color: '#1C1612',
+                    color: '#5F3636',
                     textDecoration: 'none',
                   }}
                 >
@@ -151,7 +150,7 @@ export function Navigation() {
                 onClick={() => setMenuOpen(false)}
                 style={{
                   display: 'inline-block',
-                  background: '#C06040',
+                  background: '#C9A700',
                   color: '#F4EFE4',
                   fontFamily: "'DM Sans', sans-serif",
                   fontSize: '0.875rem',

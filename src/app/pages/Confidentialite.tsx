@@ -10,7 +10,7 @@ export function Confidentialite() {
         <p style={{ margin: 0 }}>
           Les données collectées via ce site sont traitées par <strong>Espace Ködörö</strong>, 25 boulevard
           Didier Rey, 82300 Caussade, France — contact :{' '}
-          <a href="mailto:espacekodoro@gmail.com" style={{ color: '#C06040' }}>espacekodoro@gmail.com</a>.
+          <a href="mailto:espacekodoro@gmail.com" style={{ color: '#C9A700' }}>espacekodoro@gmail.com</a>.
         </p>
       </LegalSection>
 
@@ -59,9 +59,9 @@ export function Confidentialite() {
           Conformément au RGPD, vous disposez d'un droit d'accès, de rectification, d'effacement, de limitation,
           d'opposition et de portabilité de vos données. Vous pouvez exercer ces droits à tout moment en nous
           écrivant à{' '}
-          <a href="mailto:espacekodoro@gmail.com" style={{ color: '#C06040' }}>espacekodoro@gmail.com</a>.
+          <a href="mailto:espacekodoro@gmail.com" style={{ color: '#C9A700' }}>espacekodoro@gmail.com</a>.
           Vous avez également le droit d'introduire une réclamation auprès de la CNIL (
-          <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer" style={{ color: '#C06040' }}>www.cnil.fr</a>).
+          <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer" style={{ color: '#C9A700' }}>www.cnil.fr</a>).
         </p>
       </LegalSection>
 
@@ -76,7 +76,7 @@ export function Confidentialite() {
       <LegalSection heading="8. Contact">
         <p style={{ margin: 0 }}>
           Pour toute question concernant vos données personnelles :{' '}
-          <a href="mailto:espacekodoro@gmail.com" style={{ color: '#C06040' }}>espacekodoro@gmail.com</a>.
+          <a href="mailto:espacekodoro@gmail.com" style={{ color: '#C9A700' }}>espacekodoro@gmail.com</a>.
         </p>
       </LegalSection>
     </LegalLayout>

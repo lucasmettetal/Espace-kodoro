@@ -34,11 +34,10 @@ export function Therapists() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
             gap: 'clamp(3rem, 6vw, 6rem)',
             alignItems: 'start',
           }}
-          className="max-md:grid-cols-1"
+          className="grid-cols-2 max-md:grid-cols-1"
         >
           {/* Left */}
           <div>
@@ -48,7 +47,7 @@ export function Therapists() {
                 fontSize: '0.7rem',
                 letterSpacing: '0.14em',
                 textTransform: 'uppercase',
-                color: '#C06040',
+                color: '#C9A700',
                 marginBottom: '1rem',
               }}
             >
@@ -60,14 +59,14 @@ export function Therapists() {
                 fontSize: 'clamp(2rem, 4vw, 3rem)',
                 fontWeight: 700,
                 lineHeight: 1.15,
-                color: '#1C1612',
+                color: '#5F3636',
                 margin: 0,
                 marginBottom: '1.5rem',
                 letterSpacing: '-0.01em',
               }}
             >
               Rejoignez notre<br />
-              <em style={{ fontStyle: 'italic', color: '#C06040' }}>communauté de soignants</em>
+              <em style={{ fontStyle: 'italic', color: '#C9A700' }}>communauté de soignants</em>
             </h2>
             <p
               style={{
@@ -105,7 +104,7 @@ export function Therapists() {
                     style={{
                       fontFamily: "'DM Sans', sans-serif",
                       fontSize: '0.8rem',
-                      color: '#1C1612',
+                      color: '#5F3636',
                       background: '#EAE4D8',
                       padding: '0.3rem 0.75rem',
                     }}
@@ -117,8 +116,8 @@ export function Therapists() {
                   style={{
                     fontFamily: "'DM Sans', sans-serif",
                     fontSize: '0.8rem',
-                    color: '#C06040',
-                    background: 'rgba(192,96,64,0.1)',
+                    color: '#C9A700',
+                    background: 'rgba(201,167,0,0.1)',
                     padding: '0.3rem 0.75rem',
                   }}
                 >
@@ -131,7 +130,7 @@ export function Therapists() {
               href="#contact"
               style={{
                 display: 'inline-block',
-                background: '#C06040',
+                background: '#C9A700',
                 color: '#F4EFE4',
                 fontFamily: "'DM Sans', sans-serif",
                 fontSize: '0.85rem',
@@ -142,8 +141,8 @@ export function Therapists() {
                 padding: '0.875rem 2rem',
                 transition: 'background 0.2s',
               }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#A8503A')}
-              onMouseLeave={e => (e.currentTarget.style.background = '#C06040')}
+              onMouseEnter={e => (e.currentTarget.style.background = '#D4B930')}
+              onMouseLeave={e => (e.currentTarget.style.background = '#C9A700')}
             >
               Candidater comme thérapeute
             </a>
@@ -158,7 +157,7 @@ export function Therapists() {
                   display: 'flex',
                   gap: '2rem',
                   padding: '2.5rem 0',
-                  borderBottom: i < steps.length - 1 ? '1px solid rgba(28,22,18,0.1)' : 'none',
+                  borderBottom: i < steps.length - 1 ? '1px solid rgba(95,54,54,0.1)' : 'none',
                 }}
               >
                 <div
@@ -166,7 +165,7 @@ export function Therapists() {
                     fontFamily: "'DM Mono', monospace",
                     fontSize: '0.7rem',
                     fontWeight: 400,
-                    color: '#C06040',
+                    color: '#C9A700',
                     letterSpacing: '0.08em',
                     flexShrink: 0,
                     paddingTop: '0.2rem',
@@ -181,7 +180,7 @@ export function Therapists() {
                       fontFamily: "'Playfair Display', Georgia, serif",
                       fontSize: '1.2rem',
                       fontWeight: 700,
-                      color: '#1C1612',
+                      color: '#5F3636',
                       margin: 0,
                       marginBottom: '0.6rem',
                     }}

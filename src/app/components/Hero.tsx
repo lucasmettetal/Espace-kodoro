@@ -10,7 +10,7 @@ export function Hero() {
         display: 'flex',
         alignItems: 'center',
         overflow: 'hidden',
-        background: '#1C1612',
+        background: '#5F3636',
       }}
     >
       {/* Image de fond plein écran */}
@@ -37,7 +37,7 @@ export function Hero() {
           position: 'absolute',
           inset: 0,
           background:
-            'linear-gradient(to right, rgba(28,22,18,0.88) 0%, rgba(28,22,18,0.6) 45%, rgba(28,22,18,0.2) 100%)',
+            'linear-gradient(to right, rgba(95,54,54,0.88) 0%, rgba(95,54,54,0.6) 45%, rgba(95,54,54,0.2) 100%)',
           pointerEvents: 'none',
         }}
       />
@@ -72,7 +72,7 @@ export function Hero() {
               gap: '0.75rem',
             }}
           >
-            <span style={{ display: 'inline-block', width: 32, height: 1, background: '#C06040' }} />
+            <span style={{ display: 'inline-block', width: 32, height: 1, background: '#C9A700' }} />
             Caussade — Tarn-et-Garonne
           </motion.p>
 
@@ -93,7 +93,7 @@ export function Hero() {
             }}
           >
             Univers<br />
-            <em style={{ fontStyle: 'italic', color: '#C06040' }}>Partagés</em>
+            <em style={{ fontStyle: 'italic', color: '#C9A700' }}>Partagés</em>
           </motion.h1>
 
           {/* Subheading */}
@@ -111,8 +111,7 @@ export function Hero() {
               marginBottom: '3rem',
             }}
           >
-            Un espace de vie et de travail collaboratif au cœur de Caussade —
-            coworking, soins thérapeutiques et événements.
+            Une salle unique à Caussade pour vos réunions, formations, événements et occasions spéciales.
           </motion.p>
 
           {/* CTAs */}
@@ -125,7 +124,7 @@ export function Hero() {
             <a
               href="#espaces"
               style={{
-                background: '#C06040',
+                background: '#C9A700',
                 color: '#F4EFE4',
                 fontFamily: "'DM Sans', sans-serif",
                 fontSize: '0.85rem',
@@ -137,8 +136,8 @@ export function Hero() {
                 display: 'inline-block',
                 transition: 'background 0.2s',
               }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#A8503A')}
-              onMouseLeave={e => (e.currentTarget.style.background = '#C06040')}
+              onMouseEnter={e => (e.currentTarget.style.background = '#D4B930')}
+              onMouseLeave={e => (e.currentTarget.style.background = '#C9A700')}
             >
               Découvrir nos espaces
             </a>
@@ -157,7 +156,7 @@ export function Hero() {
                 display: 'inline-block',
                 transition: 'background 0.2s, color 0.2s, border-color 0.2s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#F4EFE4'; e.currentTarget.style.color = '#1C1612'; e.currentTarget.style.borderColor = '#F4EFE4'; }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#F4EFE4'; e.currentTarget.style.color = '#5F3636'; e.currentTarget.style.borderColor = '#F4EFE4'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#F4EFE4'; e.currentTarget.style.borderColor = 'rgba(244,239,228,0.4)'; }}
             >
               Nos activités
@@ -173,7 +172,7 @@ export function Hero() {
           bottom: '3rem',
           right: 'clamp(2rem, 5vw, 5rem)',
           zIndex: 2,
-          background: 'rgba(28,22,18,0.55)',
+          background: 'rgba(95,54,54,0.55)',
           backdropFilter: 'blur(4px)',
           border: '1px solid rgba(244,239,228,0.15)',
           color: '#F4EFE4',
@@ -186,7 +185,7 @@ export function Hero() {
         }}
         className="max-md:hidden"
       >
-        <div style={{ color: '#C06040', marginBottom: '0.25rem' }}>Depuis 2020</div>
+        <div style={{ color: '#C9A700', marginBottom: '0.25rem' }}>Depuis 2020</div>
         <div>L'aventure continue</div>
         <div style={{ opacity: 0.5, marginTop: '0.25rem' }}>Caussade, France</div>
       </div>
