@@ -25,8 +25,9 @@ export function MentionsLegales() {
 
       <LegalSection heading="3. Hébergement">
         <p style={{ margin: 0 }}>
-          Le site est hébergé par : <ToComplete>[à compléter une fois le site mis en ligne — ex. Netlify, Inc. / Cloudflare, Inc.]</ToComplete>.<br />
-          Adresse de l'hébergeur : <ToComplete>[à compléter]</ToComplete>
+          Le site est hébergé par : <strong>Cloudflare, Inc.</strong><br />
+          Adresse : 101 Townsend St, San Francisco, CA 94107, États-Unis<br />
+          Site web : <a href="https://www.cloudflare.com" style={{ color: '#C9A700' }}>www.cloudflare.com</a>
         </p>
       </LegalSection>
 
