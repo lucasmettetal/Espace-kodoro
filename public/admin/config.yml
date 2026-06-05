@@ -3,7 +3,7 @@ backend:
   repo: lucasmettetal/Espace-kodoro
   branch: main
   base_url: https://espace-kodoro.fr
-  auth_endpoint: /api/auth
+  auth_endpoint: api/auth
 
 media_folder: public/images
 public_folder: /images
