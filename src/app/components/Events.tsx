@@ -1,51 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-const events = [
-  {
-    id: 1,
-    date: '14 Juin',
-    day: 'Sam.',
-    year: '2026',
-    title: 'Soirée de lancement — Été Ködörö',
-    type: 'Soirée',
-    description: 'Retrouvons-nous pour célébrer l\'arrivée de l\'été avec musique live, partage et convivialité. Billetterie en ligne disponible.',
-    price: '8 €',
-    spots: 'Quelques places restantes',
-  },
-  {
-    id: 2,
-    date: '21 Juin',
-    day: 'Sam.',
-    year: '2026',
-    title: 'Fête de la Musique — Espace Ködörö',
-    type: 'Culture',
-    description: 'À l\'occasion de la Fête de la Musique, Ködörö ouvre ses portes pour une soirée musicale et festive. Entrée libre.',
-    price: 'Gratuit',
-    spots: 'Ouvert à tous',
-  },
-  {
-    id: 3,
-    date: '5 Juil.',
-    day: 'Sam.',
-    year: '2026',
-    title: 'Atelier bien-être — Découverte de la sophrologie',
-    type: 'Bien-être',
-    description: 'Une matinée pour découvrir les bienfaits de la sophrologie, animée par l\'un de nos thérapeutes adhérents.',
-    price: '15 €',
-    spots: '10 places disponibles',
-  },
-  {
-    id: 4,
-    date: '19 Juil.',
-    day: 'Sam.',
-    year: '2026',
-    title: 'Journée portes ouvertes — Thérapeutes adhérents',
-    type: 'Bien-être',
-    description: 'Rencontrez nos thérapeutes adhérents et découvrez leurs pratiques lors de consultations découverte gratuites de 15 minutes.',
-    price: 'Gratuit',
-    spots: 'Sur inscription',
-  },
-];
+type Event = {
+  id: number;
+  date: string;
+  day: string;
+  year: string;
+  title: string;
+  type: string;
+  description: string;
+  price: string;
+  spots: string;
+};
 
 const typeColors: Record<string, string> = {
   'Soirée': '#C9A700',
@@ -56,6 +21,14 @@ const typeColors: Record<string, string> = {
 
 export function Events() {
   const [hovered, setHovered] = useState<number | null>(null);
+  const [events, setEvents] = useState<Event[]>([]);
+
+  useEffect(() => {
+    fetch('/content/events.json')
+      .then(r => r.json())
+      .then(setEvents)
+      .catch(() => setEvents([]));
+  }, []);
 
   return (
     <section id="activites-agenda" style={{ background: '#FBF7EF', padding: 'clamp(5rem, 10vw, 9rem) clamp(2rem, 8vw, 8rem)' }}>

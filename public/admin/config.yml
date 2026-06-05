@@ -1,0 +1,35 @@
+backend:
+  name: github
+  repo: lucasmettetal/Espace-kodoro
+  branch: main
+  base_url: https://espace-kodoro.fr
+  auth_endpoint: /api/auth
+
+media_folder: public/images
+public_folder: /images
+
+locale: fr
+
+collections:
+  - name: events
+    label: Événements
+    label_singular: Événement
+    file: public/content/events.json
+    description: "Gérez les événements affichés sur la page d'accueil"
+    fields:
+      - name: body
+        label: Événements
+        widget: list
+        fields:
+          - { name: id, label: ID, widget: number }
+          - { name: title, label: Titre, widget: string }
+          - { name: date, label: "Date (ex: 14 Juin)", widget: string }
+          - { name: day, label: "Jour (ex: Sam.)", widget: string }
+          - { name: year, label: Année, widget: string }
+          - name: type
+            label: Type
+            widget: select
+            options: [Soirée, Culture, Formation, Bien-être, Autre]
+          - { name: description, label: Description, widget: text }
+          - { name: price, label: "Prix (ex: 8 € ou Gratuit)", widget: string }
+          - { name: spots, label: "Places (ex: 10 places disponibles)", widget: string }
