@@ -22,7 +22,7 @@ export async function onRequestPost({ request, env }) {
     return Response.json({ error: 'Email ou mot de passe incorrect' }, { status: 401, headers: cors });
   }
 
-  const token = await signJWT({ id: organizer.id, email: organizer.email, name: organizer.name }, env);
+  const token = await signJWT({ id: organizer.id, email: organizer.email, name: organizer.name, is_admin: organizer.is_admin ?? 0 }, env);
 
-  return Response.json({ token, name: organizer.name }, { headers: cors });
+  return Response.json({ token, name: organizer.name, is_admin: organizer.is_admin ?? 0 }, { headers: cors });
 }

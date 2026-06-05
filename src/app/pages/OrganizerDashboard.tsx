@@ -44,6 +44,7 @@ export function OrganizerDashboard() {
   const navigate = useNavigate();
   const token = localStorage.getItem('kodoro_token');
   const name = localStorage.getItem('kodoro_name') ?? 'Organisateur';
+  const isAdmin = localStorage.getItem('kodoro_is_admin') === '1';
 
   const [events, setEvents] = useState<Event[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
@@ -52,7 +53,8 @@ export function OrganizerDashboard() {
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<'events' | 'registrations' | 'team'>('events');
+  const [tab, setTab] = useState<'events' | 'registrations' | 'team' | 'organizers'>('events');
+  const [organizers, setOrganizers] = useState<{id: number, name: string, email: string, is_admin: number, created_at: string}[]>([]);
   const [teamForm, setTeamForm] = useState({ name: '', email: '', password: '' });
   const [teamError, setTeamError] = useState('');
   const [teamSuccess, setTeamSuccess] = useState('');
@@ -68,7 +70,19 @@ export function OrganizerDashboard() {
     if (!token) { navigate('/organizer'); return; }
     fetchEvents();
     fetchRegistrations();
+    if (isAdmin) fetchOrganizers();
   }, []);
+
+  async function fetchOrganizers() {
+    const res = await fetch('/api/organizer/team', { headers });
+    if (res.ok) setOrganizers(await res.json());
+  }
+
+  async function deleteOrganizer(id: number) {
+    if (!confirm('Supprimer ce compte organisateur ?')) return;
+    await fetch('/api/organizer/team', { method: 'DELETE', headers, body: JSON.stringify({ id }) });
+    fetchOrganizers();
+  }
 
   async function fetchEvents() {
     const res = await fetch('/api/organizer/events', { headers });
@@ -182,9 +196,10 @@ export function OrganizerDashboard() {
         {/* Tabs */}
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem' }}>
           {[
-            { key: 'events', label: 'Mes événements', icon: Calendar },
+            { key: 'events', label: isAdmin ? 'Tous les événements' : 'Mes événements', icon: Calendar },
             { key: 'registrations', label: 'Inscriptions', icon: Users },
             { key: 'team', label: 'Équipe', icon: UserPlus },
+            ...(isAdmin ? [{ key: 'organizers', label: 'Organisateurs', icon: Users }] : []),
           ].map(({ key, label, icon: Icon }) => (
             <button
               key={key}
@@ -223,6 +238,7 @@ export function OrganizerDashboard() {
                       <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C9A700', display: 'block', marginBottom: '0.25rem' }}>{event.type}</span>
                       <span style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.1rem', fontWeight: 700, color: '#5F3636' }}>{event.title}</span>
                       <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: '#6B5D52', marginLeft: '1rem' }}>{event.day} {event.date} {event.year}</span>
+                    {isAdmin && (event as any).organizer_name && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.7rem', color: '#C9A700', marginLeft: '0.75rem' }}>({(event as any).organizer_name})</span>}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
                       {event.spots_total > 0 && (
@@ -385,6 +401,33 @@ export function OrganizerDashboard() {
                   {teamSaving ? 'Création...' : 'Créer le compte'}
                 </button>
               </div>
+            </div>
+          </>
+        )}
+        {/* Organizers tab — admin only */}
+        {tab === 'organizers' && isAdmin && (
+          <>
+            <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.5rem', fontWeight: 700, color: '#5F3636', margin: 0, marginBottom: '1.5rem' }}>
+              Organisateurs ({organizers.length})
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {organizers.map(org => (
+                <div key={org.id} style={{ background: '#FBF7EF', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div>
+                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.95rem', fontWeight: 600, color: '#5F3636' }}>{org.name}</span>
+                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: '#6B5D52', marginLeft: '1rem' }}>{org.email}</span>
+                    {org.is_admin === 1 && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#C9A700', marginLeft: '0.75rem', background: 'rgba(201,167,0,0.1)', padding: '0.15rem 0.5rem' }}>Admin</span>}
+                  </div>
+                  {org.is_admin === 0 && (
+                    <button
+                      onClick={() => deleteOrganizer(org.id)}
+                      style={{ background: 'rgba(192,50,50,0.1)', color: '#c03232', border: 'none', padding: '0.4rem 0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem' }}
+                    >
+                      <Trash2 size={13} /> Supprimer
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
           </>
         )}

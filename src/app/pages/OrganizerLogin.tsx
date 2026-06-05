@@ -21,6 +21,7 @@ export function OrganizerLogin() {
       if (res.ok) {
         localStorage.setItem('kodoro_token', data.token);
         localStorage.setItem('kodoro_name', data.name);
+        localStorage.setItem('kodoro_is_admin', data.is_admin ? '1' : '0');
         navigate('/organizer/dashboard');
       } else {
         setError(data.error ?? 'Erreur de connexion');

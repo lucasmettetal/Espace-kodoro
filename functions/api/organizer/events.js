@@ -10,9 +10,9 @@ export async function onRequestGet({ request, env }) {
   const payload = await requireAuth(request, env);
   if (!payload) return Response.json({ error: 'Non autorisé' }, { status: 401, headers: cors });
 
-  const { results } = await env.DB.prepare(
-    'SELECT * FROM events WHERE organizer_id = ? ORDER BY year, date'
-  ).bind(payload.id).all();
+  const { results } = payload.is_admin
+    ? await env.DB.prepare('SELECT e.*, o.name as organizer_name FROM events e JOIN organizers o ON e.organizer_id = o.id ORDER BY e.year, e.date').all()
+    : await env.DB.prepare('SELECT * FROM events WHERE organizer_id = ? ORDER BY year, date').bind(payload.id).all();
 
   return Response.json(results, { headers: cors });
 }
