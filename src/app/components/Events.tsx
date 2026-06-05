@@ -26,7 +26,7 @@ export function Events() {
   useEffect(() => {
     fetch('/content/events.json')
       .then(r => r.json())
-      .then(setEvents)
+      .then(data => setEvents(data.events ?? []))
       .catch(() => setEvents([]));
   }, []);
 
