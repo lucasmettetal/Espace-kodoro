@@ -5,7 +5,7 @@ const plans = [
     id: 'demi-journee',
     label: 'Location',
     name: 'Demi-journée',
-    price: '150',
+    price: '90',
     unit: '4h',
     description: 'Pour vos réunions, ateliers ou petits événements. Capacité jusqu\'à 80 personnes.',
     features: [
@@ -23,7 +23,7 @@ const plans = [
     id: 'journee',
     label: 'Location',
     name: 'Journée complète',
-    price: '280',
+    price: '160',
     unit: '8h',
     description: 'Pour vos formations, séminaires et événements plus importants. Configuration flexible selon vos besoins.',
     features: [
@@ -42,8 +42,8 @@ const plans = [
     id: 'zen',
     label: 'Cabinet Zen',
     name: 'Thérapeute',
-    price: '25',
-    unit: '/ demi-journée',
+    price: '8',
+    unit: '/ heure',
     description: 'Pour les thérapeutes et professionnels de santé souhaitant accéder au cabinet de soin partagé.',
     features: [
       'Cabinet entièrement équipé',
@@ -250,16 +250,16 @@ export function Tarifs() {
             {[
               {
                 name: 'Journée',
-                price: '15',
+                price: '25',
                 unit: '/ jour',
                 description: 'Pour travailler ponctuellement dans un cadre professionnel et convivial.',
                 features: ['Accès espace de travail', 'Wifi haut débit', 'Cuisine & café', 'Imprimante (quota)'],
               },
               {
                 name: 'Mensuel',
-                price: '120',
-                unit: '/ mois',
-                description: 'Pour les habitués qui veulent un espace fixe au quotidien.',
+                price: 'Sur devis',
+                unit: '',
+                description: 'Pour les habitués qui veulent un espace fixe au quotidien. Tarif à négocier selon les besoins.',
                 features: ['Accès illimité', 'Bureau attitré', 'Adresse postale', 'Tarif préférentiel location salle'],
               },
             ].map((plan) => (
@@ -287,7 +287,7 @@ export function Tarifs() {
                   </h3>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem' }}>
                     <span style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2rem', fontWeight: 700, color: '#C9A700', lineHeight: 1 }}>
-                      {plan.price}€
+                      {plan.price}{plan.unit ? '€' : ''}
                     </span>
                     <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.75rem', color: 'rgba(244,239,228,0.45)', letterSpacing: '0.04em' }}>
                       {plan.unit}
