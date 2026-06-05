@@ -181,6 +181,7 @@ export function Footer() {
             {[
               { label: 'Mentions légales', to: '/mentions-legales' },
               { label: 'Politique de confidentialité', to: '/politique-de-confidentialite' },
+              { label: 'Espace organisateur', to: '/organizer' },
             ].map((item) => (
               <Link
                 key={item.to}

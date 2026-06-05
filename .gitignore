@@ -30,3 +30,13 @@ node_modules/
 dist/
 .env.production
 .vite/
+
+# Wrangler local state
+.wrangler/
+
+# Scripts de test temporaires
+verify-script.js
+verify-script.mjs
+test-responsive.mjs
+browser-screenshot.png
+screen-hero.png

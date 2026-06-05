@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { RegisterModal } from './RegisterModal';
 
 type Event = {
   id: number;
@@ -10,6 +11,8 @@ type Event = {
   description: string;
   price: string;
   spots: string;
+  spots_total?: number;
+  spots_taken?: number;
 };
 
 const typeColors: Record<string, string> = {
@@ -32,15 +35,23 @@ function parseEventDate(event: Event): Date {
 export function Events() {
   const [hovered, setHovered] = useState<number | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 
   useEffect(() => {
-    fetch('/content/events.json')
-      .then(r => r.json())
-      .then(data => setEvents(data.events ?? []))
-      .catch(() => setEvents([]));
+    // Essaie l'API D1 d'abord, sinon fallback JSON
+    fetch('/api/events')
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => { if (Array.isArray(data) && data.length > 0) setEvents(data); else return Promise.reject(); })
+      .catch(() =>
+        fetch('/content/events.json')
+          .then(r => r.json())
+          .then(data => setEvents(data.events ?? []))
+          .catch(() => setEvents([]))
+      );
   }, []);
 
   return (
+    <>
     <section id="activites-agenda" style={{ background: '#FBF7EF', padding: 'clamp(5rem, 10vw, 9rem) clamp(2rem, 8vw, 8rem)' }}>
       <div style={{ maxWidth: 1280, margin: '0 auto' }}>
         {/* Header */}
@@ -216,32 +227,41 @@ export function Events() {
                 >
                   {event.price}
                 </div>
-                <a
-                  href="#contact"
+                <button
+                  onClick={() => setSelectedEvent(event)}
                   style={{
                     display: 'inline-block',
                     border: '1px solid rgba(95,54,54,0.25)',
                     color: '#5F3636',
+                    background: 'transparent',
                     fontFamily: "'DM Sans', sans-serif",
                     fontSize: '0.75rem',
                     fontWeight: 500,
                     letterSpacing: '0.06em',
                     textTransform: 'uppercase',
-                    textDecoration: 'none',
                     padding: '0.5rem 1.25rem',
                     transition: 'background 0.2s, color 0.2s',
                     whiteSpace: 'nowrap',
+                    cursor: 'pointer',
                   }}
                   onMouseEnter={e => { e.currentTarget.style.background = '#C9A700'; e.currentTarget.style.color = '#F4EFE4'; e.currentTarget.style.borderColor = '#C9A700'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#5F3636'; e.currentTarget.style.borderColor = 'rgba(95,54,54,0.25)'; }}
                 >
                   S'inscrire
-                </a>
+                </button>
               </div>
             </div>
           ))}
         </div>
       </div>
     </section>
+
+    {selectedEvent && (
+      <RegisterModal
+        event={selectedEvent as any}
+        onClose={() => setSelectedEvent(null)}
+      />
+    )}
+  </>
   );
 }

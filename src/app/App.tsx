@@ -11,6 +11,8 @@ import { Contact } from './components/Contact';
 import { Footer } from './components/Footer';
 import { MentionsLegales } from './pages/MentionsLegales';
 import { Confidentialite } from './pages/Confidentialite';
+import { OrganizerLogin } from './pages/OrganizerLogin';
+import { OrganizerDashboard } from './pages/OrganizerDashboard';
 
 function Home() {
   return (
@@ -36,6 +38,8 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/mentions-legales" element={<MentionsLegales />} />
         <Route path="/politique-de-confidentialite" element={<Confidentialite />} />
+        <Route path="/organizer" element={<OrganizerLogin />} />
+        <Route path="/organizer/dashboard" element={<OrganizerDashboard />} />
       </Routes>
     </div>
   );
