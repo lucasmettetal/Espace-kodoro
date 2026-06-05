@@ -57,6 +57,10 @@ export function OrganizerDashboard() {
   const [teamError, setTeamError] = useState('');
   const [teamSuccess, setTeamSuccess] = useState('');
   const [teamSaving, setTeamSaving] = useState(false);
+  const [pwdForm, setPwdForm] = useState({ current: '', next: '', confirm: '' });
+  const [pwdError, setPwdError] = useState('');
+  const [pwdSuccess, setPwdSuccess] = useState('');
+  const [pwdSaving, setPwdSaving] = useState(false);
 
   const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 
@@ -117,6 +121,21 @@ export function OrganizerDashboard() {
   }
 
   const filtered = selectedEventId ? registrations.filter(r => r.event_title === events.find(e => e.id === selectedEventId)?.title) : registrations;
+
+  async function changePassword() {
+    if (pwdForm.next !== pwdForm.confirm) { setPwdError('Les mots de passe ne correspondent pas'); return; }
+    setPwdSaving(true); setPwdError(''); setPwdSuccess('');
+    try {
+      const res = await fetch('/api/organizer/password', {
+        method: 'PUT', headers,
+        body: JSON.stringify({ current_password: pwdForm.current, new_password: pwdForm.next }),
+      });
+      const data = await res.json();
+      if (res.ok) { setPwdSuccess('Mot de passe modifié !'); setPwdForm({ current: '', next: '', confirm: '' }); }
+      else setPwdError(data.error ?? 'Erreur');
+    } catch { setPwdError('Impossible de contacter le serveur'); }
+    finally { setPwdSaving(false); }
+  }
 
   async function createTeamMember() {
     setTeamSaving(true);
@@ -300,6 +319,38 @@ export function OrganizerDashboard() {
         {/* Team tab */}
         {tab === 'team' && (
           <>
+            {/* Changer mot de passe */}
+            <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.5rem', fontWeight: 700, color: '#5F3636', margin: 0, marginBottom: '1.5rem' }}>
+              Mon mot de passe
+            </h2>
+            <div style={{ background: '#FBF7EF', padding: '2rem', maxWidth: 480, marginBottom: '3rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {[
+                  { id: 'current', label: 'Mot de passe actuel' },
+                  { id: 'next', label: 'Nouveau mot de passe (8 caractères min)' },
+                  { id: 'confirm', label: 'Confirmer le nouveau mot de passe' },
+                ].map(field => (
+                  <div key={field.id}>
+                    <label style={{ display: 'block', fontFamily: "'DM Mono', monospace", fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#6B5D52', marginBottom: '0.35rem' }}>
+                      {field.label}
+                    </label>
+                    <input
+                      type="password"
+                      value={pwdForm[field.id as keyof typeof pwdForm]}
+                      onChange={e => setPwdForm({ ...pwdForm, [field.id]: e.target.value })}
+                      style={{ width: '100%', background: '#EAE4D8', border: 'none', padding: '0.75rem 1rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#5F3636', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                ))}
+                {pwdError && <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: '#c03232', margin: 0 }}>{pwdError}</p>}
+                {pwdSuccess && <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: '#5C7460', margin: 0 }}>{pwdSuccess}</p>}
+                <button onClick={changePassword} disabled={pwdSaving}
+                  style={{ background: '#5F3636', color: '#F4EFE4', border: 'none', padding: '0.875rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: pwdSaving ? 'not-allowed' : 'pointer', opacity: pwdSaving ? 0.7 : 1 }}>
+                  {pwdSaving ? 'Modification...' : 'Changer le mot de passe'}
+                </button>
+              </div>
+            </div>
+
             <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.5rem', fontWeight: 700, color: '#5F3636', margin: 0, marginBottom: '1.5rem' }}>
               Créer un compte organisateur
             </h2>
