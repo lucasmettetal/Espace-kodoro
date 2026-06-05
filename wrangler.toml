@@ -1,0 +1,7 @@
+name = "kodoro"
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "kodoro-db"
+database_id = "641e4e89-318b-410a-bd46-4b476fd0e3ed"
