@@ -1,37 +1,3 @@
 {
-  "events": [
-    {
-      "price": "8 €",
-      "date": "14 Juin",
-      "spots": "Quelques places restantes",
-      "title": "Soirée de lancement — Été Ködörö",
-      "type": "Soirée",
-      "id": 1,
-      "day": "Sam.",
-      "description": "Retrouvons-nous pour célébrer l'arrivée de l'été avec musique live, partage et convivialité. Billetterie en ligne disponible.",
-      "year": "2026"
-    },
-    {
-      "price": "Gratuit",
-      "date": "19 Juil.",
-      "spots": "Sur inscription",
-      "title": "Journée portes ouvertes — Thérapeutes adhérents",
-      "type": "Bien-être",
-      "id": 4,
-      "day": "Sam.",
-      "description": "Rencontrez nos thérapeutes adhérents et découvrez leurs pratiques lors de consultations découverte gratuites de 15 minutes.",
-      "year": "2026"
-    },
-    {
-      "price": "Gratuit",
-      "date": "12 juin",
-      "spots": "30 places disponibles",
-      "title": "Soirée gaming - Espace ködörö",
-      "type": "Soirée",
-      "id": 1,
-      "day": "vendredi",
-      "description": "Viens tester des compétences a la manette ou bien découvrir le monde du jeux vidéo !",
-      "year": "2026"
-    }
-  ]
+  "events": []
 }
