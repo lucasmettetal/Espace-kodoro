@@ -1,48 +1,59 @@
 {
   "events": [
     {
-      "id": 1,
+      "price": "8 €",
       "date": "14 Juin",
-      "day": "Sam.",
-      "year": "2026",
+      "spots": "Quelques places restantes",
       "title": "Soirée de lancement — Été Ködörö",
       "type": "Soirée",
+      "id": 1,
+      "day": "Sam.",
       "description": "Retrouvons-nous pour célébrer l'arrivée de l'été avec musique live, partage et convivialité. Billetterie en ligne disponible.",
-      "price": "8 €",
-      "spots": "Quelques places restantes"
+      "year": "2026"
     },
     {
-      "id": 2,
+      "price": "Gratuit",
       "date": "21 Juin",
-      "day": "Sam.",
-      "year": "2026",
+      "spots": "Ouvert à tous",
       "title": "Fête de la Musique — Espace Ködörö",
       "type": "Culture",
+      "id": 2,
+      "day": "Sam.",
       "description": "À l'occasion de la Fête de la Musique, Ködörö ouvre ses portes pour une soirée musicale et festive. Entrée libre.",
-      "price": "Gratuit",
-      "spots": "Ouvert à tous"
+      "year": "2026"
     },
     {
-      "id": 3,
+      "price": "15 €",
       "date": "5 Juil.",
-      "day": "Sam.",
-      "year": "2026",
+      "spots": "10 places disponibles",
       "title": "Atelier bien-être — Découverte de la sophrologie",
       "type": "Bien-être",
+      "id": 3,
+      "day": "Sam.",
       "description": "Une matinée pour découvrir les bienfaits de la sophrologie, animée par l'un de nos thérapeutes adhérents.",
-      "price": "15 €",
-      "spots": "10 places disponibles"
+      "year": "2026"
     },
     {
-      "id": 4,
+      "price": "Gratuit",
       "date": "19 Juil.",
-      "day": "Sam.",
-      "year": "2026",
+      "spots": "Sur inscription",
       "title": "Journée portes ouvertes — Thérapeutes adhérents",
       "type": "Bien-être",
+      "id": 4,
+      "day": "Sam.",
       "description": "Rencontrez nos thérapeutes adhérents et découvrez leurs pratiques lors de consultations découverte gratuites de 15 minutes.",
+      "year": "2026"
+    },
+    {
       "price": "Gratuit",
-      "spots": "Sur inscription"
+      "date": "12 juin",
+      "spots": "30 places disponibles",
+      "title": "Soirée gaming - Espace ködörö",
+      "type": "Soirée",
+      "id": 1,
+      "day": "vendredi",
+      "description": "Viens tester des compétences a la manette ou bien découvrir le monde du jeux vidéo !",
+      "year": "2026"
     }
   ]
 }
