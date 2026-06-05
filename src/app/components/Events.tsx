@@ -19,6 +19,16 @@ const typeColors: Record<string, string> = {
   'Bien-être': '#8B7355',
 };
 
+const monthMap: Record<string, number> = {
+  'Janv.': 0, 'Févr.': 1, 'Mars': 2, 'Avr.': 3, 'Mai': 4, 'Juin': 5,
+  'Juil.': 6, 'Août': 7, 'Sept.': 8, 'Oct.': 9, 'Nov.': 10, 'Déc.': 11,
+};
+
+function parseEventDate(event: Event): Date {
+  const [day, month] = event.date.split(' ');
+  return new Date(parseInt(event.year), monthMap[month] ?? 0, parseInt(day));
+}
+
 export function Events() {
   const [hovered, setHovered] = useState<number | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
@@ -64,7 +74,7 @@ export function Events() {
             </h2>
           </div>
           <a
-            href="#contact"
+            href="mailto:espacekodoro@gmail.com"
             style={{
               fontFamily: "'DM Sans', sans-serif",
               fontSize: '0.8rem',
@@ -78,13 +88,16 @@ export function Events() {
               whiteSpace: 'nowrap',
             }}
           >
-            Voir tout l'agenda →
+            Nous contacter →
           </a>
         </div>
 
         {/* Event list */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-          {events.map((event, i) => (
+          {[...events]
+            .sort((a, b) => parseEventDate(a).getTime() - parseEventDate(b).getTime())
+            .slice(0, 4)
+            .map((event, i) => (
             <div
               key={event.id}
               style={{
