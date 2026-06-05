@@ -35,9 +35,14 @@ export function OrganizerLogin() {
   return (
     <div style={{ minHeight: '100vh', background: '#5F3636', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
       <div style={{ background: '#F4EFE4', padding: '3rem', width: '100%', maxWidth: 420 }}>
-        <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C9A700', marginBottom: '0.5rem' }}>
-          Espace Ködörö
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+          <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C9A700', margin: 0 }}>
+            Espace Ködörö
+          </p>
+          <a href="/" style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.62rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6B5D52', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+            ← Site principal
+          </a>
+        </div>
         <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.75rem', fontWeight: 700, color: '#5F3636', margin: 0, marginBottom: '2rem' }}>
           Espace organisateur
         </h1>
