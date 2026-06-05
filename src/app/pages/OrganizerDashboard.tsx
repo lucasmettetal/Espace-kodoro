@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { LogOut, Plus, Users, Calendar, X } from 'lucide-react';
+import { LogOut, Plus, Users, Calendar, X, Pencil, Trash2, Download } from 'lucide-react';
 
 type Event = {
   id: number;
@@ -26,6 +26,20 @@ type Registration = {
 
 const emptyForm = { title: '', date: '', day: '', year: new Date().getFullYear().toString(), type: 'Soirée', description: '', price: '', spots_total: '0' };
 
+function exportCSV(registrations: Registration[], filename: string) {
+  const headers = ['Nom', 'Email', 'Téléphone', 'Événement', 'Date inscription'];
+  const rows = registrations.map(r => [
+    r.name, r.email, r.phone || '', r.event_title,
+    new Date(r.created_at).toLocaleDateString('fr-FR'),
+  ]);
+  const csv = [headers, ...rows].map(row => row.map(v => `"${v}"`).join(',')).join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function OrganizerDashboard() {
   const navigate = useNavigate();
   const token = localStorage.getItem('kodoro_token');
@@ -35,6 +49,7 @@ export function OrganizerDashboard() {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<'events' | 'registrations'>('events');
@@ -65,17 +80,36 @@ export function OrganizerDashboard() {
     navigate('/organizer');
   }
 
-  async function createEvent() {
+  async function saveEvent() {
     setSaving(true);
-    await fetch('/api/organizer/events', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ ...form, spots_total: parseInt(form.spots_total) }),
-    });
+    const body = { ...form, spots_total: parseInt(form.spots_total) };
+    if (editingEvent) {
+      await fetch(`/api/organizer/events/${editingEvent.id}`, { method: 'PUT', headers, body: JSON.stringify(body) });
+    } else {
+      await fetch('/api/organizer/events', { method: 'POST', headers, body: JSON.stringify(body) });
+    }
     await fetchEvents();
     setShowForm(false);
+    setEditingEvent(null);
     setForm(emptyForm);
     setSaving(false);
+  }
+
+  async function deleteEvent(id: number) {
+    if (!confirm('Supprimer cet événement et toutes ses inscriptions ?')) return;
+    await fetch(`/api/organizer/events/${id}`, { method: 'DELETE', headers });
+    await fetchEvents();
+    if (selectedEventId === id) { setSelectedEventId(null); fetchRegistrations(); }
+  }
+
+  function openEdit(event: Event) {
+    setEditingEvent(event);
+    setForm({
+      title: event.title, date: event.date, day: event.day, year: event.year,
+      type: event.type, description: event.description, price: event.price,
+      spots_total: String(event.spots_total),
+    });
+    setShowForm(true);
   }
 
   const filtered = selectedEventId ? registrations.filter(r => r.event_title === events.find(e => e.id === selectedEventId)?.title) : registrations;
@@ -149,12 +183,28 @@ export function OrganizerDashboard() {
                         </span>
                       )}
                       <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', fontWeight: 600, color: '#5F3636' }}>{event.price}</span>
-                      <button
-                        onClick={() => { setSelectedEventId(event.id); fetchRegistrations(event.id); setTab('registrations'); }}
-                        style={{ background: '#EAE4D8', color: '#5F3636', border: 'none', padding: '0.4rem 0.9rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', cursor: 'pointer' }}
-                      >
-                        Voir inscrits
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          onClick={() => { setSelectedEventId(event.id); fetchRegistrations(event.id); setTab('registrations'); }}
+                          style={{ background: '#EAE4D8', color: '#5F3636', border: 'none', padding: '0.4rem 0.9rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                        >
+                          <Users size={13} /> Inscrits
+                        </button>
+                        <button
+                          onClick={() => openEdit(event)}
+                          style={{ background: '#EAE4D8', color: '#5F3636', border: 'none', padding: '0.4rem 0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                          title="Modifier"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          onClick={() => deleteEvent(event.id)}
+                          style={{ background: 'rgba(192,50,50,0.1)', color: '#c03232', border: 'none', padding: '0.4rem 0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                          title="Supprimer"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -170,11 +220,21 @@ export function OrganizerDashboard() {
               <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.5rem', fontWeight: 700, color: '#5F3636', margin: 0 }}>
                 Inscriptions {selectedEventId ? `— ${events.find(e => e.id === selectedEventId)?.title}` : '(tous les événements)'}
               </h2>
-              {selectedEventId && (
-                <button onClick={() => { setSelectedEventId(null); fetchRegistrations(); }} style={{ background: 'none', border: '1px solid rgba(95,54,54,0.2)', color: '#6B5D52', padding: '0.4rem 0.75rem', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <X size={13} /> Voir tout
-                </button>
-              )}
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                {registrations.length > 0 && (
+                  <button
+                    onClick={() => exportCSV(registrations, `inscriptions-${selectedEventId ?? 'tous'}.csv`)}
+                    style={{ background: '#5F3636', color: '#F4EFE4', border: 'none', padding: '0.5rem 1rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                  >
+                    <Download size={13} /> Export CSV
+                  </button>
+                )}
+                {selectedEventId && (
+                  <button onClick={() => { setSelectedEventId(null); fetchRegistrations(); }} style={{ background: 'none', border: '1px solid rgba(95,54,54,0.2)', color: '#6B5D52', padding: '0.4rem 0.75rem', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <X size={13} /> Voir tout
+                  </button>
+                )}
+              </div>
             </div>
 
             {registrations.length === 0 ? (
@@ -216,8 +276,10 @@ export function OrganizerDashboard() {
         >
           <div style={{ background: '#F4EFE4', padding: '2.5rem', width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h3 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.3rem', fontWeight: 700, color: '#5F3636', margin: 0 }}>Nouvel événement</h3>
-              <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#5F3636' }}><X size={18} /></button>
+              <h3 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.3rem', fontWeight: 700, color: '#5F3636', margin: 0 }}>
+                {editingEvent ? 'Modifier l\'événement' : 'Nouvel événement'}
+              </h3>
+              <button onClick={() => { setShowForm(false); setEditingEvent(null); setForm(emptyForm); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#5F3636' }}><X size={18} /></button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -257,9 +319,9 @@ export function OrganizerDashboard() {
                 />
               </div>
 
-              <button onClick={createEvent} disabled={saving}
+              <button onClick={saveEvent} disabled={saving}
                 style={{ background: '#C9A700', color: '#F4EFE4', border: 'none', padding: '0.9rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-                {saving ? 'Création...' : 'Créer l\'événement'}
+                {saving ? 'Enregistrement...' : editingEvent ? 'Enregistrer les modifications' : 'Créer l\'événement'}
               </button>
             </div>
           </div>
