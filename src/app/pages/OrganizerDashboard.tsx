@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { LogOut, Plus, Users, Calendar, X, Pencil, Trash2, Download } from 'lucide-react';
+import { LogOut, Plus, Users, Calendar, X, Pencil, Trash2, Download, UserPlus } from 'lucide-react';
 
 type Event = {
   id: number;
@@ -52,7 +52,11 @@ export function OrganizerDashboard() {
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<'events' | 'registrations'>('events');
+  const [tab, setTab] = useState<'events' | 'registrations' | 'team'>('events');
+  const [teamForm, setTeamForm] = useState({ name: '', email: '', password: '' });
+  const [teamError, setTeamError] = useState('');
+  const [teamSuccess, setTeamSuccess] = useState('');
+  const [teamSaving, setTeamSaving] = useState(false);
 
   const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 
@@ -114,6 +118,30 @@ export function OrganizerDashboard() {
 
   const filtered = selectedEventId ? registrations.filter(r => r.event_title === events.find(e => e.id === selectedEventId)?.title) : registrations;
 
+  async function createTeamMember() {
+    setTeamSaving(true);
+    setTeamError('');
+    setTeamSuccess('');
+    try {
+      const res = await fetch('/api/organizer/register', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(teamForm),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setTeamSuccess(`Compte créé pour ${teamForm.name} !`);
+        setTeamForm({ name: '', email: '', password: '' });
+      } else {
+        setTeamError(data.error ?? 'Erreur');
+      }
+    } catch {
+      setTeamError('Impossible de contacter le serveur');
+    } finally {
+      setTeamSaving(false);
+    }
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: '#F4EFE4' }}>
       {/* Header */}
@@ -137,6 +165,7 @@ export function OrganizerDashboard() {
           {[
             { key: 'events', label: 'Mes événements', icon: Calendar },
             { key: 'registrations', label: 'Inscriptions', icon: Users },
+            { key: 'team', label: 'Équipe', icon: UserPlus },
           ].map(({ key, label, icon: Icon }) => (
             <button
               key={key}
@@ -267,8 +296,48 @@ export function OrganizerDashboard() {
             )}
           </>
         )}
-      </div>
 
+        {/* Team tab */}
+        {tab === 'team' && (
+          <>
+            <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.5rem', fontWeight: 700, color: '#5F3636', margin: 0, marginBottom: '1.5rem' }}>
+              Créer un compte organisateur
+            </h2>
+            <div style={{ background: '#FBF7EF', padding: '2rem', maxWidth: 480 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {[
+                  { id: 'name', label: 'Nom complet', type: 'text' },
+                  { id: 'email', label: 'Email', type: 'email' },
+                  { id: 'password', label: 'Mot de passe (8 caractères min)', type: 'password' },
+                ].map(field => (
+                  <div key={field.id}>
+                    <label style={{ display: 'block', fontFamily: "'DM Mono', monospace", fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#6B5D52', marginBottom: '0.35rem' }}>
+                      {field.label}
+                    </label>
+                    <input
+                      type={field.type}
+                      value={teamForm[field.id as keyof typeof teamForm]}
+                      onChange={e => setTeamForm({ ...teamForm, [field.id]: e.target.value })}
+                      style={{ width: '100%', background: '#EAE4D8', border: 'none', padding: '0.75rem 1rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#5F3636', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                ))}
+
+                {teamError && <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: '#c03232', margin: 0 }}>{teamError}</p>}
+                {teamSuccess && <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: '#5C7460', margin: 0 }}>{teamSuccess}</p>}
+
+                <button
+                  onClick={createTeamMember}
+                  disabled={teamSaving}
+                  style={{ background: '#C9A700', color: '#F4EFE4', border: 'none', padding: '0.875rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: teamSaving ? 'not-allowed' : 'pointer', opacity: teamSaving ? 0.7 : 1, marginTop: '0.5rem' }}
+                >
+                  {teamSaving ? 'Création...' : 'Créer le compte'}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
       {/* Modal création événement */}
       {showForm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(95,54,54,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 100 }}

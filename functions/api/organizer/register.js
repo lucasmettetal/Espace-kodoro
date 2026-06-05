@@ -1,18 +1,16 @@
-import { hashPassword } from '../_auth.js';
+import { hashPassword, requireAuth } from '../_auth.js';
 
-const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type' };
+const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, Authorization' };
 
 export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: cors });
 }
 
 export async function onRequestPost({ request, env }) {
-  const { name, email, password, token } = await request.json();
+  const payload = await requireAuth(request, env);
+  if (!payload) return Response.json({ error: 'Non autorisé' }, { status: 401, headers: cors });
 
-  const validToken = env.REGISTER_TOKEN;
-  if (!validToken || token !== validToken) {
-    return Response.json({ error: 'Token invalide' }, { status: 403, headers: cors });
-  }
+  const { name, email, password } = await request.json();
 
   if (!name || !email || !password) {
     return Response.json({ error: 'Tous les champs sont requis' }, { status: 400, headers: cors });
