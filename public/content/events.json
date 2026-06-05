@@ -13,28 +13,6 @@
     },
     {
       "price": "Gratuit",
-      "date": "21 Juin",
-      "spots": "Ouvert à tous",
-      "title": "Fête de la Musique — Espace Ködörö",
-      "type": "Culture",
-      "id": 2,
-      "day": "Sam.",
-      "description": "À l'occasion de la Fête de la Musique, Ködörö ouvre ses portes pour une soirée musicale et festive. Entrée libre.",
-      "year": "2026"
-    },
-    {
-      "price": "15 €",
-      "date": "5 Juil.",
-      "spots": "10 places disponibles",
-      "title": "Atelier bien-être — Découverte de la sophrologie",
-      "type": "Bien-être",
-      "id": 3,
-      "day": "Sam.",
-      "description": "Une matinée pour découvrir les bienfaits de la sophrologie, animée par l'un de nos thérapeutes adhérents.",
-      "year": "2026"
-    },
-    {
-      "price": "Gratuit",
       "date": "19 Juil.",
       "spots": "Sur inscription",
       "title": "Journée portes ouvertes — Thérapeutes adhérents",
