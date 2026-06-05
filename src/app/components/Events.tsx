@@ -36,16 +36,22 @@ export function Events() {
   const [hovered, setHovered] = useState<number | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [fromD1, setFromD1] = useState(false);
 
   useEffect(() => {
     // Essaie l'API D1 d'abord, sinon fallback JSON
     fetch('/api/events')
       .then(r => r.ok ? r.json() : Promise.reject())
-      .then(data => { if (Array.isArray(data) && data.length > 0) setEvents(data); else return Promise.reject(); })
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setEvents(data);
+          setFromD1(true);
+        } else return Promise.reject();
+      })
       .catch(() =>
         fetch('/content/events.json')
           .then(r => r.json())
-          .then(data => setEvents(data.events ?? []))
+          .then(data => { setEvents(data.events ?? []); setFromD1(false); })
           .catch(() => setEvents([]))
       );
   }, []);
@@ -228,7 +234,7 @@ export function Events() {
                   {event.price}
                 </div>
                 <button
-                  onClick={() => setSelectedEvent(event)}
+                  onClick={() => fromD1 && setSelectedEvent(event)}
                   style={{
                     display: 'inline-block',
                     border: '1px solid rgba(95,54,54,0.25)',
@@ -242,7 +248,8 @@ export function Events() {
                     padding: '0.5rem 1.25rem',
                     transition: 'background 0.2s, color 0.2s',
                     whiteSpace: 'nowrap',
-                    cursor: 'pointer',
+                    cursor: fromD1 ? 'pointer' : 'default',
+                  opacity: fromD1 ? 1 : 0.4,
                   }}
                   onMouseEnter={e => { e.currentTarget.style.background = '#C9A700'; e.currentTarget.style.color = '#F4EFE4'; e.currentTarget.style.borderColor = '#C9A700'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#5F3636'; e.currentTarget.style.borderColor = 'rgba(95,54,54,0.25)'; }}

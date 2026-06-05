@@ -1,11 +1,11 @@
-const SECRET = 'kodoro-jwt-secret-2026';
-
 function bufToBase64(buf) {
   let binary = '';
   const bytes = new Uint8Array(buf);
   for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
   return btoa(binary);
 }
+
+const getSecret = (env) => env?.JWT_SECRET ?? 'kodoro-jwt-secret-dev';
 
 export async function hashPassword(password) {
   const encoder = new TextEncoder();
@@ -14,26 +14,26 @@ export async function hashPassword(password) {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function getKey(usage) {
+async function getKey(usage, env) {
   const encoder = new TextEncoder();
   return crypto.subtle.importKey(
-    'raw', encoder.encode(SECRET),
+    'raw', encoder.encode(getSecret(env)),
     { name: 'HMAC', hash: 'SHA-256' },
     false, [usage]
   );
 }
 
-export async function signJWT(payload) {
+export async function signJWT(payload, env) {
   const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
   const body = btoa(JSON.stringify({ ...payload, exp: Date.now() + 86400000 }));
   const encoder = new TextEncoder();
-  const key = await getKey('sign');
+  const key = await getKey('sign', env);
   const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(`${header}.${body}`));
   const signature = bufToBase64(sig);
   return `${header}.${body}.${signature}`;
 }
 
-export async function requireAuth(request) {
+export async function requireAuth(request, env) {
   try {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) return null;
@@ -42,7 +42,7 @@ export async function requireAuth(request) {
     if (!header || !body || !signature) return null;
 
     const encoder = new TextEncoder();
-    const key = await getKey('verify');
+    const key = await getKey('verify', env);
     const sigBytes = Uint8Array.from(atob(signature), c => c.charCodeAt(0));
     const valid = await crypto.subtle.verify(
       'HMAC', key, sigBytes, encoder.encode(`${header}.${body}`)
