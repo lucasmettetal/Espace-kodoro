@@ -35,15 +35,33 @@ function Home() {
 
 function ScrollToEvents() {
   useEffect(() => {
-    const scroll = () => {
+    let attempts = 0;
+    let timerId: ReturnType<typeof setTimeout>;
+
+    const tryScroll = () => {
       const el = document.getElementById('activites-agenda');
       if (el) {
-        el.scrollIntoView({ behavior: 'smooth' });
+        el.scrollIntoView({ behavior: 'instant', block: 'start' });
+        return;
+      }
+      if (attempts < 30) {
+        attempts++;
+        timerId = setTimeout(tryScroll, 100);
       }
     };
-    // Attendre que React ait rendu tous les composants
-    const timer = setTimeout(scroll, 150);
-    return () => clearTimeout(timer);
+
+    // Lancer après que toutes les images sont chargées ou après 2s max
+    if (document.readyState === 'complete') {
+      tryScroll();
+    } else {
+      window.addEventListener('load', tryScroll, { once: true });
+      timerId = setTimeout(tryScroll, 2000);
+    }
+
+    return () => {
+      clearTimeout(timerId);
+      window.removeEventListener('load', tryScroll);
+    };
   }, []);
 
   return <Home />;
