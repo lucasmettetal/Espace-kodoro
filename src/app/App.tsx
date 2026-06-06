@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Routes, Route } from 'react-router';
 import { Navigation } from './components/Navigation';
 import { Hero } from './components/Hero';
@@ -32,11 +33,28 @@ function Home() {
   );
 }
 
+function ScrollToEvents() {
+  useEffect(() => {
+    const scroll = () => {
+      const el = document.getElementById('activites-agenda');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+    };
+    // Attendre que React ait rendu tous les composants
+    const timer = setTimeout(scroll, 150);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return <Home />;
+}
+
 export default function App() {
   return (
     <div style={{ minHeight: '100vh', overflowX: 'hidden' }}>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/gaming" element={<ScrollToEvents />} />
         <Route path="/mentions-legales" element={<MentionsLegales />} />
         <Route path="/politique-de-confidentialite" element={<Confidentialite />} />
         <Route path="/organizer" element={<OrganizerLogin />} />
