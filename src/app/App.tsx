@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect } from 'react';
 import { Routes, Route } from 'react-router';
 import { Navigation } from './components/Navigation';
 import { Hero } from './components/Hero';
@@ -34,34 +34,25 @@ function Home() {
 }
 
 function ScrollToEvents() {
-  useEffect(() => {
-    let attempts = 0;
-    let timerId: ReturnType<typeof setTimeout>;
+  // useLayoutEffect = avant que le navigateur affiche quoi que ce soit
+  useLayoutEffect(() => {
+    const el = document.getElementById('activites-agenda');
+    if (el) {
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({ top, behavior: 'instant' });
+    }
+  }, []);
 
-    const tryScroll = () => {
+  // Fallback : si les images ont décalé les positions après le premier paint
+  useEffect(() => {
+    const timer = setTimeout(() => {
       const el = document.getElementById('activites-agenda');
       if (el) {
-        el.scrollIntoView({ behavior: 'instant', block: 'start' });
-        return;
+        const top = el.getBoundingClientRect().top + window.scrollY;
+        window.scrollTo({ top, behavior: 'instant' });
       }
-      if (attempts < 30) {
-        attempts++;
-        timerId = setTimeout(tryScroll, 100);
-      }
-    };
-
-    // Lancer après que toutes les images sont chargées ou après 2s max
-    if (document.readyState === 'complete') {
-      tryScroll();
-    } else {
-      window.addEventListener('load', tryScroll, { once: true });
-      timerId = setTimeout(tryScroll, 2000);
-    }
-
-    return () => {
-      clearTimeout(timerId);
-      window.removeEventListener('load', tryScroll);
-    };
+    }, 600);
+    return () => clearTimeout(timer);
   }, []);
 
   return <Home />;
