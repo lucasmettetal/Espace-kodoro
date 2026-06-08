@@ -177,26 +177,44 @@ export function OrganizerDashboard() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#F4EFE4' }}>
+      <style>{`
+        .dk-header { background: #5F3636; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+        .dk-subtitle { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: rgba(244,239,228,0.5); margin-left: 1rem; text-transform: uppercase; letter-spacing: 0.08em; }
+        .dk-body { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+        .dk-tabs { display: flex; gap: 0.5rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .dk-tab-btn { border: none; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.25rem; white-space: nowrap; }
+        .dk-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; gap: 1rem; flex-wrap: wrap; }
+        .dk-event-card { background: #FBF7EF; padding: 1.25rem 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+        .dk-event-actions { display: flex; align-items: center; gap: 1.5rem; flex-shrink: 0; }
+        @media (max-width: 640px) {
+          .dk-header { padding: 0.875rem 1rem; }
+          .dk-subtitle { display: none; }
+          .dk-body { padding: 1rem; }
+          .dk-tab-btn { padding: 0.5rem 0.75rem; font-size: 0.78rem; }
+          .dk-section-header { flex-direction: column; align-items: flex-start; }
+          .dk-event-card { padding: 1rem; }
+          .dk-event-actions { width: 100%; justify-content: flex-end; }
+        }
+      `}</style>
+
       {/* Header */}
-      <header style={{ background: '#5F3636', padding: '1rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <header className="dk-header">
         <div>
           <span style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.2rem', fontWeight: 700, color: '#F4EFE4' }}>
             Espace <em style={{ color: '#C9A700' }}>Ködörö</em>
           </span>
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', color: 'rgba(244,239,228,0.5)', marginLeft: '1rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            Dashboard — {name}
-          </span>
+          <span className="dk-subtitle">Dashboard — {name}</span>
         </div>
-        <button onClick={logout} style={{ background: 'none', border: '1px solid rgba(244,239,228,0.2)', color: '#F4EFE4', padding: '0.4rem 0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem' }}>
+        <button onClick={logout} style={{ background: 'none', border: '1px solid rgba(244,239,228,0.2)', color: '#F4EFE4', padding: '0.4rem 0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
           <LogOut size={14} /> Déconnexion
         </button>
       </header>
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '2rem' }}>
+      <div className="dk-body">
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem' }}>
+        <div className="dk-tabs">
           {[
-            { key: 'events', label: isAdmin ? 'Tous les événements' : 'Mes événements', icon: Calendar },
+            { key: 'events', label: isAdmin ? 'Événements' : 'Mes événements', icon: Calendar },
             { key: 'registrations', label: 'Inscriptions', icon: Users },
             { key: 'team', label: 'Équipe', icon: UserPlus },
             ...(isAdmin ? [{ key: 'organizers', label: 'Organisateurs', icon: Users }] : []),
@@ -204,7 +222,8 @@ export function OrganizerDashboard() {
             <button
               key={key}
               onClick={() => setTab(key as any)}
-              style={{ background: tab === key ? '#5F3636' : '#EAE4D8', color: tab === key ? '#F4EFE4' : '#5F3636', border: 'none', padding: '0.6rem 1.25rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              className="dk-tab-btn"
+              style={{ background: tab === key ? '#5F3636' : '#EAE4D8', color: tab === key ? '#F4EFE4' : '#5F3636' }}
             >
               <Icon size={15} /> {label}
             </button>
@@ -214,13 +233,13 @@ export function OrganizerDashboard() {
         {/* Events tab */}
         {tab === 'events' && (
           <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <div className="dk-section-header">
               <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.5rem', fontWeight: 700, color: '#5F3636', margin: 0 }}>
-                Mes événements ({events.length})
+                {isAdmin ? 'Tous les événements' : 'Mes événements'} ({events.length})
               </h2>
               <button
                 onClick={() => setShowForm(true)}
-                style={{ background: '#C9A700', color: '#F4EFE4', border: 'none', padding: '0.6rem 1.25rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                style={{ background: '#C9A700', color: '#F4EFE4', border: 'none', padding: '0.6rem 1.25rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}
               >
                 <Plus size={15} /> Nouvel événement
               </button>
@@ -233,14 +252,14 @@ export function OrganizerDashboard() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 {events.map(event => (
-                  <div key={event.id} style={{ background: '#FBF7EF', padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div key={event.id} className="dk-event-card">
                     <div>
                       <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C9A700', display: 'block', marginBottom: '0.25rem' }}>{event.type}</span>
                       <span style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.1rem', fontWeight: 700, color: '#5F3636' }}>{event.title}</span>
                       <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: '#6B5D52', marginLeft: '1rem' }}>{event.day} {event.date} {event.year}</span>
-                    {isAdmin && (event as any).organizer_name && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.7rem', color: '#C9A700', marginLeft: '0.75rem' }}>({(event as any).organizer_name})</span>}
+                      {isAdmin && (event as any).organizer_name && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.7rem', color: '#C9A700', marginLeft: '0.75rem' }}>({(event as any).organizer_name})</span>}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                    <div className="dk-event-actions">
                       {event.spots_total > 0 && (
                         <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.75rem', color: '#6B5D52' }}>
                           {event.spots_taken}/{event.spots_total} inscrits
@@ -280,7 +299,7 @@ export function OrganizerDashboard() {
         {/* Registrations tab */}
         {tab === 'registrations' && (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <div className="dk-section-header">
               <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.5rem', fontWeight: 700, color: '#5F3636', margin: 0 }}>
                 Inscriptions {selectedEventId ? `— ${events.find(e => e.id === selectedEventId)?.title}` : '(tous les événements)'}
               </h2>
