@@ -26,7 +26,7 @@ const features = [
   { emoji: '🕹️', title: 'Rétro gaming' },
   { emoji: '👥', title: 'Jeux multijoueurs' },
   { emoji: '🏆', title: 'Petit tournoi possible' },
-  { emoji: '💻', title: 'Coin PC / LAN si disponible' },
+  { emoji: '💻', title: 'Coin PC / LAN selon le matériel disponible' },
   { emoji: '💬', title: 'Échanges autour du projet associatif' },
 ];
 
@@ -180,8 +180,8 @@ export function GamingPage() {
                 Pourquoi un paiement en ligne ?
               </p>
               <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', lineHeight: 1.8, color: '#6B5D52', margin: 0 }}>
-                La réservation est confirmée uniquement après paiement. Le paiement en ligne permet de limiter
-                les réservations non honorées et de faciliter l'accueil le soir de l'événement.
+                Votre place est réservée uniquement après paiement. Le paiement en ligne permet de confirmer
+                les places à l'avance et de faciliter l'accueil le soir de la soirée.
               </p>
             </div>
           </div>
@@ -202,7 +202,7 @@ export function GamingPage() {
               </h2>
             </div>
             <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 'clamp(0.95rem, 1.5vw, 1.05rem)', lineHeight: 1.85, color: '#6B5D52', margin: 0 }}>
-              Après une première soirée test réussie, l'objectif est de créer un rendez-vous gaming régulier
+              Après une première rencontre test encourageante, l'objectif est de créer un rendez-vous gaming régulier
               à Caussade. L'idée n'est pas de faire un cybercafé ou une salle e-sport complète, mais de
               proposer un moment convivial pour jouer, échanger, découvrir des jeux, partager du matériel
               et construire ensemble les prochains formats.
@@ -257,7 +257,8 @@ export function GamingPage() {
               <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', lineHeight: 1.8, color: '#6B5D52', margin: 0 }}>
                 Les enfants de moins de 15 ans doivent être accompagnés par un adulte présent sur place
                 pendant la soirée. Les mineurs de 15 à 17 ans doivent fournir une autorisation parentale
-                avec un numéro de téléphone d'un responsable légal.
+                avec un numéro de téléphone d'un responsable légal. Merci de nous prévenir à l'avance
+                si un mineur participe.
               </p>
             </div>
           </div>
