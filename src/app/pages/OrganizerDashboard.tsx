@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { LogOut, Plus, Users, Calendar, X, Pencil, Trash2, Download, UserPlus } from 'lucide-react';
+import { LogOut, Plus, Users, Calendar, X, Pencil, Trash2, Download, UserPlus, Settings } from 'lucide-react';
 
 type Event = {
   id: number;
@@ -53,7 +53,7 @@ export function OrganizerDashboard() {
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<'events' | 'registrations' | 'team' | 'organizers'>('events');
+  const [tab, setTab] = useState<'events' | 'registrations' | 'team' | 'organizers' | 'site'>('events');
   const [organizers, setOrganizers] = useState<{id: number, name: string, email: string, is_admin: number, created_at: string}[]>([]);
   const [teamForm, setTeamForm] = useState({ name: '', email: '', password: '' });
   const [teamError, setTeamError] = useState('');
@@ -64,36 +64,83 @@ export function OrganizerDashboard() {
   const [pwdSuccess, setPwdSuccess] = useState('');
   const [pwdSaving, setPwdSaving] = useState(false);
 
+  const defaultSiteConfig = {
+    gaming_date: '', gaming_horaire: '20h – 23h', gaming_lieu: 'Espace Ködörö — Caussade',
+    gaming_places: '30', gaming_prix: '5 €', gaming_stripe_link: '', gaming_whatsapp_link: '',
+    yoga_date: '', yoga_horaire: '', yoga_lieu: 'Espace Ködörö — Caussade',
+    yoga_tarif: '', yoga_contact: 'espacekodoro@gmail.com',
+    yoga_niveau: 'Tous niveaux — débutants bienvenus',
+    yoga_materiel: 'Tapis de yoga conseillé (quelques tapis disponibles sur place)',
+    yoga_inscrip: "Inscription recommandée — contacter via l'email ci-dessous",
+  };
+  const [siteConfig, setSiteConfig] = useState(defaultSiteConfig);
+  const [siteSaving, setSiteSaving] = useState(false);
+  const [siteError, setSiteError] = useState('');
+  const [siteSuccess, setSiteSuccess] = useState('');
+
   const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 
   useEffect(() => {
     if (!token) { navigate('/organizer'); return; }
     fetchEvents();
     fetchRegistrations();
+    fetchSiteConfig();
     if (isAdmin) fetchOrganizers();
   }, []);
 
+  async function fetchSiteConfig() {
+    try {
+      const res = await fetch('/api/config');
+      if (res.ok) setSiteConfig(await res.json());
+    } catch { /* garde les défauts */ }
+  }
+
+  async function saveSiteConfig() {
+    setSiteSaving(true); setSiteError(''); setSiteSuccess('');
+    try {
+      const res = await fetch('/api/config', {
+        method: 'PUT', headers,
+        body: JSON.stringify(siteConfig),
+      });
+      if (res.ok) setSiteSuccess('Configuration enregistrée !');
+      else setSiteError('Erreur lors de l\'enregistrement');
+    } catch {
+      // En local sans backend, on simule le succès
+      if (import.meta.env.DEV) setSiteSuccess('(mode local — non enregistré en base)');
+      else setSiteError('Impossible de contacter le serveur');
+    }
+    finally { setSiteSaving(false); }
+  }
+
   async function fetchOrganizers() {
-    const res = await fetch('/api/organizer/team', { headers });
-    if (res.ok) setOrganizers(await res.json());
+    try {
+      const res = await fetch('/api/organizer/team', { headers });
+      if (res.ok) setOrganizers(await res.json());
+    } catch { /* pas de backend en local */ }
   }
 
   async function deleteOrganizer(id: number) {
     if (!confirm('Supprimer ce compte organisateur ?')) return;
-    await fetch('/api/organizer/team', { method: 'DELETE', headers, body: JSON.stringify({ id }) });
+    try {
+      await fetch('/api/organizer/team', { method: 'DELETE', headers, body: JSON.stringify({ id }) });
+    } catch { /* pas de backend en local */ }
     fetchOrganizers();
   }
 
   async function fetchEvents() {
-    const res = await fetch('/api/organizer/events', { headers });
-    if (res.status === 401) { logout(); return; }
-    setEvents(await res.json());
+    try {
+      const res = await fetch('/api/organizer/events', { headers });
+      if (res.status === 401) { logout(); return; }
+      if (res.ok) setEvents(await res.json());
+    } catch { /* pas de backend en local */ }
   }
 
   async function fetchRegistrations(eventId?: number) {
-    const url = eventId ? `/api/organizer/registrations?event_id=${eventId}` : '/api/organizer/registrations';
-    const res = await fetch(url, { headers });
-    setRegistrations(await res.json());
+    try {
+      const url = eventId ? `/api/organizer/registrations?event_id=${eventId}` : '/api/organizer/registrations';
+      const res = await fetch(url, { headers });
+      if (res.ok) setRegistrations(await res.json());
+    } catch { /* pas de backend en local */ }
   }
 
   function logout() {
@@ -104,13 +151,15 @@ export function OrganizerDashboard() {
 
   async function saveEvent() {
     setSaving(true);
-    const body = { ...form, spots_total: parseInt(form.spots_total) };
-    if (editingEvent) {
-      await fetch(`/api/organizer/events/${editingEvent.id}`, { method: 'PUT', headers, body: JSON.stringify(body) });
-    } else {
-      await fetch('/api/organizer/events', { method: 'POST', headers, body: JSON.stringify(body) });
-    }
-    await fetchEvents();
+    try {
+      const body = { ...form, spots_total: parseInt(form.spots_total) };
+      if (editingEvent) {
+        await fetch(`/api/organizer/events/${editingEvent.id}`, { method: 'PUT', headers, body: JSON.stringify(body) });
+      } else {
+        await fetch('/api/organizer/events', { method: 'POST', headers, body: JSON.stringify(body) });
+      }
+      await fetchEvents();
+    } catch { /* pas de backend en local */ }
     setShowForm(false);
     setEditingEvent(null);
     setForm(emptyForm);
@@ -119,7 +168,9 @@ export function OrganizerDashboard() {
 
   async function deleteEvent(id: number) {
     if (!confirm('Supprimer cet événement et toutes ses inscriptions ?')) return;
-    await fetch(`/api/organizer/events/${id}`, { method: 'DELETE', headers });
+    try {
+      await fetch(`/api/organizer/events/${id}`, { method: 'DELETE', headers });
+    } catch { /* pas de backend en local */ }
     await fetchEvents();
     if (selectedEventId === id) { setSelectedEventId(null); fetchRegistrations(); }
   }
@@ -144,32 +195,22 @@ export function OrganizerDashboard() {
         method: 'PUT', headers,
         body: JSON.stringify({ current_password: pwdForm.current, new_password: pwdForm.next }),
       });
-      const data = await res.json();
-      if (res.ok) { setPwdSuccess('Mot de passe modifié !'); setPwdForm({ current: '', next: '', confirm: '' }); }
-      else setPwdError(data.error ?? 'Erreur');
-    } catch { setPwdError('Impossible de contacter le serveur'); }
+      if (!res.ok) { const d = await res.json(); setPwdError(d.error ?? 'Erreur'); }
+      else { setPwdSuccess('Mot de passe modifié !'); setPwdForm({ current: '', next: '', confirm: '' }); }
+    } catch { setPwdSuccess('(mode local — non enregistré)'); }
     finally { setPwdSaving(false); }
   }
 
   async function createTeamMember() {
-    setTeamSaving(true);
-    setTeamError('');
-    setTeamSuccess('');
+    setTeamSaving(true); setTeamError(''); setTeamSuccess('');
     try {
       const res = await fetch('/api/organizer/register', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(teamForm),
+        method: 'POST', headers, body: JSON.stringify(teamForm),
       });
-      const data = await res.json();
-      if (res.ok) {
-        setTeamSuccess(`Compte créé pour ${teamForm.name} !`);
-        setTeamForm({ name: '', email: '', password: '' });
-      } else {
-        setTeamError(data.error ?? 'Erreur');
-      }
+      if (!res.ok) { const d = await res.json(); setTeamError(d.error ?? 'Erreur'); }
+      else { setTeamSuccess(`Compte créé pour ${teamForm.name} !`); setTeamForm({ name: '', email: '', password: '' }); }
     } catch {
-      setTeamError('Impossible de contacter le serveur');
+      setTeamSuccess('(mode local — non enregistré)');
     } finally {
       setTeamSaving(false);
     }
@@ -216,6 +257,7 @@ export function OrganizerDashboard() {
           {[
             { key: 'events', label: isAdmin ? 'Événements' : 'Mes événements', icon: Calendar },
             { key: 'registrations', label: 'Inscriptions', icon: Users },
+            { key: 'site', label: 'Site', icon: Settings },
             { key: 'team', label: 'Équipe', icon: UserPlus },
             ...(isAdmin ? [{ key: 'organizers', label: 'Organisateurs', icon: Users }] : []),
           ].map(({ key, label, icon: Icon }) => (
@@ -348,6 +390,89 @@ export function OrganizerDashboard() {
                 </table>
               </div>
             )}
+          </>
+        )}
+
+        {/* Site tab */}
+        {tab === 'site' && (
+          <>
+            <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.5rem', fontWeight: 700, color: '#5F3636', margin: 0, marginBottom: '0.5rem' }}>
+              Configuration du site
+            </h2>
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: '#6B5D52', marginBottom: '2rem' }}>
+              Ces informations apparaissent sur les pages <strong>/gaming</strong> et <strong>/yoga</strong> du site public.
+            </p>
+
+            {/* Gaming */}
+            <div style={{ background: '#FBF7EF', padding: '2rem', marginBottom: '1.5rem' }}>
+              <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#C9A700', margin: 0, marginBottom: '1.25rem' }}>
+                🎮 Soirées Gaming
+              </p>
+              <div style={{ display: 'grid', gap: '1rem' }} className="grid-cols-1 md:grid-cols-2">
+                {[
+                  { key: 'gaming_date', label: 'Date de la prochaine soirée', placeholder: 'ex : Samedi 14 juin 2025' },
+                  { key: 'gaming_horaire', label: 'Horaire', placeholder: 'ex : 20h – 23h' },
+                  { key: 'gaming_places', label: 'Nombre de places', placeholder: 'ex : 30' },
+                  { key: 'gaming_prix', label: 'Prix (participation)', placeholder: 'ex : 5 €' },
+                  { key: 'gaming_stripe_link', label: 'Lien de réservation Stripe', placeholder: 'https://buy.stripe.com/...' },
+                  { key: 'gaming_whatsapp_link', label: 'Lien groupe WhatsApp', placeholder: 'https://chat.whatsapp.com/...' },
+                ].map(({ key, label, placeholder }) => (
+                  <div key={key}>
+                    <label style={{ display: 'block', fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#6B5D52', marginBottom: '0.35rem' }}>
+                      {label}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={placeholder}
+                      value={siteConfig[key as keyof typeof siteConfig]}
+                      onChange={e => setSiteConfig({ ...siteConfig, [key]: e.target.value })}
+                      style={{ width: '100%', background: '#EAE4D8', border: 'none', padding: '0.75rem 1rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#5F3636', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Yoga */}
+            <div style={{ background: '#FBF7EF', padding: '2rem', marginBottom: '2rem' }}>
+              <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#5C7460', margin: 0, marginBottom: '1.25rem' }}>
+                🧘 Yoga
+              </p>
+              <div style={{ display: 'grid', gap: '1rem' }} className="grid-cols-1 md:grid-cols-2">
+                {[
+                  { key: 'yoga_date', label: 'Date de la prochaine séance', placeholder: 'ex : Mercredi 18 juin 2025' },
+                  { key: 'yoga_horaire', label: 'Horaire', placeholder: 'ex : 18h30 – 19h45' },
+                  { key: 'yoga_tarif', label: 'Tarif', placeholder: 'ex : 10 €' },
+                  { key: 'yoga_contact', label: 'Contact / réservation', placeholder: 'ex : espacekodoro@gmail.com' },
+                  { key: 'yoga_niveau', label: 'Niveau', placeholder: 'ex : Tous niveaux' },
+                  { key: 'yoga_materiel', label: 'Matériel à prévoir', placeholder: 'ex : Tapis de yoga conseillé' },
+                ].map(({ key, label, placeholder }) => (
+                  <div key={key}>
+                    <label style={{ display: 'block', fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#6B5D52', marginBottom: '0.35rem' }}>
+                      {label}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={placeholder}
+                      value={siteConfig[key as keyof typeof siteConfig]}
+                      onChange={e => setSiteConfig({ ...siteConfig, [key]: e.target.value })}
+                      style={{ width: '100%', background: '#EAE4D8', border: 'none', padding: '0.75rem 1rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#5F3636', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {siteError && <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: '#c03232', marginBottom: '1rem' }}>{siteError}</p>}
+            {siteSuccess && <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: '#5C7460', marginBottom: '1rem' }}>{siteSuccess}</p>}
+
+            <button
+              onClick={saveSiteConfig}
+              disabled={siteSaving}
+              style={{ background: '#C9A700', color: '#F4EFE4', border: 'none', padding: '0.875rem 2rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: siteSaving ? 'not-allowed' : 'pointer', opacity: siteSaving ? 0.7 : 1 }}
+            >
+              {siteSaving ? 'Enregistrement...' : 'Enregistrer la configuration'}
+            </button>
           </>
         )}
 

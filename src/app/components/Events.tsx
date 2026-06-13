@@ -73,7 +73,7 @@ export function Events() {
                 marginBottom: '1rem',
               }}
             >
-              05 — Agenda & Événements
+              06 — Prochaines dates
             </p>
             <h2
               style={{
@@ -86,8 +86,8 @@ export function Events() {
                 letterSpacing: '-0.01em',
               }}
             >
-              À venir chez<br />
-              <em style={{ fontStyle: 'italic', color: '#C9A700' }}>Espace Ködörö</em>
+              Prochains rendez-vous<br />
+              <em style={{ fontStyle: 'italic', color: '#C9A700' }}>à l'Espace Ködörö</em>
             </h2>
           </div>
           <a

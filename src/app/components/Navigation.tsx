@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
 
 const navLinks = [
-  { label: 'Activités', href: '#activites' },
+  { label: 'Activités', href: '/activites' },
   { label: 'Nos Espaces', href: '#espaces' },
   { label: 'Thérapeutes', href: '#therapeutes' },
-  { label: 'Événements', href: '#activites-agenda' },
+  { label: 'Rendez-vous', href: '#activites-agenda' },
   { label: 'Tarifs', href: '#tarifs' },
   { label: 'Contact', href: '#contact' },
 ];

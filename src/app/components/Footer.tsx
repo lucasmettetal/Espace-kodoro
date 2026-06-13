@@ -25,12 +25,12 @@ const socialLinks = [
 ];
 
 const footerLinks = [
-  { label: 'Activités', href: '#activites' },
-  { label: 'Nos Espaces', href: '#espaces' },
-  { label: 'Thérapeutes', href: '#therapeutes' },
-  { label: 'Événements', href: '#activites-agenda' },
-  { label: 'Tarifs', href: '#tarifs' },
-  { label: 'Contact', href: '#contact' },
+  { label: 'Accueil', href: '/' },
+  { label: 'Activités', href: '/activites' },
+  { label: 'Gaming', href: '/gaming' },
+  { label: 'Yoga', href: '/yoga' },
+  { label: 'Rendez-vous', href: '/#activites-agenda' },
+  { label: 'Contact', href: '/#contact' },
 ];
 
 export function Footer() {

@@ -11,6 +11,21 @@ export function OrganizerLogin() {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    // Bypass local dev — identifiants définis dans .env.local (non pushé)
+    if (
+      import.meta.env.DEV &&
+      form.email === import.meta.env.VITE_DEV_USER &&
+      form.password === import.meta.env.VITE_DEV_PASS
+    ) {
+      localStorage.setItem('kodoro_token', 'dev-token');
+      localStorage.setItem('kodoro_name', 'Dev Admin');
+      localStorage.setItem('kodoro_is_admin', '1');
+      navigate('/organizer/dashboard');
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch('/api/organizer/login', {
         method: 'POST',
