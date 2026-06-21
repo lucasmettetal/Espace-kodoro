@@ -44,8 +44,8 @@ export async function onRequestPatch({ request, env, params }) {
       await env.DB.prepare('DELETE FROM participants WHERE reservation_id = ?').bind(id).run();
       if (participants.length > 0) {
         const stmts = participants
-          .filter((p: any) => p.full_name?.trim())
-          .map((p: any) =>
+          .filter(p => p.full_name?.trim())
+          .map(p =>
             env.DB.prepare('INSERT INTO participants (reservation_id, full_name, is_minor, age) VALUES (?, ?, ?, ?)')
               .bind(id, p.full_name, p.is_minor ? 1 : 0, p.age ?? null)
           );
