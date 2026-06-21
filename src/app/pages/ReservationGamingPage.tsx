@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router';
+import { Link } from 'react-router';
 import { ActivityLayout } from './ActivityLayout';
+import { useUtm } from '../hooks/useUtm';
 
 // ─────────────────────────────────────────────────────────────
 //  CONSTANTES — à modifier si l'événement change
@@ -135,7 +136,7 @@ function blurBorder(e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>)
 }
 
 export function ReservationGamingPage() {
-  const location = useLocation();
+  const utmParams = useUtm();
 
   // ── Chargement de l'événement ──────────────────────────────────────────────
   const [eventInfo, setEventInfo] = useState<EventInfo | null>(null);
@@ -152,17 +153,6 @@ export function ReservationGamingPage() {
       .catch(() => setEventError(true))
       .finally(() => setLoadingEvent(false));
   }, []);
-
-  // ── Paramètres UTM (transmis au backend pour le tracking source) ───────────
-  const [utmParams, setUtmParams] = useState<Record<string, string>>({});
-  useEffect(() => {
-    const sp = new URLSearchParams(location.search);
-    const utm: Record<string, string> = {};
-    ['utm_source', 'utm_medium', 'utm_campaign'].forEach(k => {
-      if (sp.has(k)) utm[k] = sp.get(k)!;
-    });
-    setUtmParams(utm);
-  }, [location.search]);
 
   // ── État du formulaire ─────────────────────────────────────────────────────
   const [form, setForm] = useState<FormData>({
@@ -226,7 +216,13 @@ export function ReservationGamingPage() {
         })),
         equipment:    form.equipment,
         comment:      form.comment.trim() || null,
-        ...utmParams,
+        utm_source:   utmParams.utm_source,
+        utm_medium:   utmParams.utm_medium,
+        utm_campaign: utmParams.utm_campaign,
+        utm_content:  utmParams.utm_content,
+        utm_term:     utmParams.utm_term,
+        referrer:     utmParams.referrer,
+        landing_page: utmParams.landing_page,
       };
 
       const res  = await fetch('/api/create-checkout-session', {

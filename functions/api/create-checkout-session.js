@@ -45,6 +45,10 @@ export async function onRequestPost({ request, env }) {
     utm_source,
     utm_medium,
     utm_campaign,
+    utm_content,
+    utm_term,
+    referrer,
+    landing_page,
   } = body;
 
   // Validation des champs obligatoires
@@ -111,8 +115,9 @@ export async function onRequestPost({ request, env }) {
     const insertResult = await env.DB.prepare(`
       INSERT INTO reservations
         (event_id, customer_name, email, phone, quantity, status,
-         amount_cents, utm_source, utm_medium, utm_campaign, comment, expires_at)
-      VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)
+         amount_cents, utm_source, utm_medium, utm_campaign,
+         utm_content, utm_term, referrer, landing_page, comment, expires_at)
+      VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       event_id,
       customer_name.trim(),
@@ -120,9 +125,13 @@ export async function onRequestPost({ request, env }) {
       phone.trim(),
       qty,
       totalCents,
-      utm_source  ?? null,
-      utm_medium  ?? null,
+      utm_source   ?? null,
+      utm_medium   ?? null,
       utm_campaign ?? null,
+      utm_content  ?? null,
+      utm_term     ?? null,
+      referrer     ?? null,
+      landing_page ?? null,
       comment?.trim() || null,
       expiresAt,
     ).run();
@@ -191,10 +200,13 @@ export async function onRequestPost({ request, env }) {
         quantity: qty,
       }],
       metadata: {
-        // Ces métadonnées sont utilisées par le webhook pour identifier la réservation
         reservation_id: String(reservationId),
         event_id:       String(event_id),
         quantity:       String(qty),
+        // UTMs pour retrouver la source directement dans Stripe Dashboard
+        ...(utm_source   && { utm_source }),
+        ...(utm_medium   && { utm_medium }),
+        ...(utm_campaign && { utm_campaign }),
       },
       // {CHECKOUT_SESSION_ID} est remplacé automatiquement par Stripe
       success_url: `${siteUrl}/merci-reservation-gaming?session_id={CHECKOUT_SESSION_ID}`,

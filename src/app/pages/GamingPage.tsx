@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { ActivityLayout } from './ActivityLayout';
+import { useUtm, buildUtmQuery } from '../hooks/useUtm';
 
 type SiteConfig = {
   gaming_date: string;
@@ -85,6 +86,8 @@ export function GamingPage() {
   }, []);
 
   const waHref = cfg.gaming_whatsapp_link || '#contact';
+  const utms = useUtm();
+  const reservationHref = `/reservation-gaming${buildUtmQuery(utms)}`;
 
   return (
     <ActivityLayout>
@@ -111,7 +114,7 @@ export function GamingPage() {
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
             <Link
-              to="/reservation-gaming"
+              to={reservationHref}
               style={{ display: 'inline-block', background: '#C9A700', color: '#F4EFE4', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', textDecoration: 'none', padding: '0.75rem 2rem', transition: 'background 0.2s' }}
               onMouseEnter={e => (e.currentTarget.style.background = '#D4B930')}
               onMouseLeave={e => (e.currentTarget.style.background = '#C9A700')}
@@ -162,7 +165,7 @@ export function GamingPage() {
                 ))}
               </dl>
               <Link
-                to="/reservation-gaming"
+                to={reservationHref}
                 style={{ display: 'inline-block', background: '#C9A700', color: '#F4EFE4', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', textDecoration: 'none', padding: '0.75rem 2rem', transition: 'background 0.2s' }}
                 onMouseEnter={e => (e.currentTarget.style.background = '#D4B930')}
                 onMouseLeave={e => (e.currentTarget.style.background = '#C9A700')}
