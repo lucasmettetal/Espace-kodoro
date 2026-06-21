@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { LogOut, Plus, Users, Calendar, X, Pencil, Trash2, Download, UserPlus, Settings } from 'lucide-react';
+import { LogOut, Plus, Users, Calendar, X, Pencil, Trash2, Download, UserPlus, Settings, ChevronDown, ChevronUp, Mail } from 'lucide-react';
 
 type Event = {
   id: number;
@@ -113,9 +113,11 @@ export function OrganizerDashboard() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [reservationFilter, setReservationFilter] = useState<string>('all');
   const [showManualForm, setShowManualForm] = useState(false);
-  const [manualForm, setManualForm] = useState({ customer_name: '', email: '', phone: '', quantity: 1, amount_cents: '', comment: '' });
+  const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
+  const [manualForm, setManualForm] = useState({ customer_name: '', email: '', phone: '', quantity: 1, amount_cents: '', status: 'paid', comment: '' });
   const [manualParticipants, setManualParticipants] = useState<{ full_name: string; is_minor: boolean }[]>([{ full_name: '', is_minor: false }]);
   const [manualSubmitting, setManualSubmitting] = useState(false);
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [organizers, setOrganizers] = useState<{id: number, name: string, email: string, is_admin: number, created_at: string}[]>([]);
   const [teamForm, setTeamForm] = useState({ name: '', email: '', password: '' });
   const [teamError, setTeamError] = useState('');
@@ -217,34 +219,89 @@ export function OrganizerDashboard() {
     } catch { /* pas de backend en local */ }
   }
 
+  const resetManualForm = () => {
+    setManualForm({ customer_name: '', email: '', phone: '', quantity: 1, amount_cents: '', status: 'paid', comment: '' });
+    setManualParticipants([{ full_name: '', is_minor: false }]);
+    setEditingReservation(null);
+    setShowManualForm(false);
+  };
+
+  function openEditReservation(r: Reservation) {
+    setEditingReservation(r);
+    setManualForm({
+      customer_name: r.customer_name,
+      email: r.email,
+      phone: r.phone ?? '',
+      quantity: r.quantity,
+      amount_cents: r.amount_cents ? (r.amount_cents / 100).toString() : '',
+      status: r.status,
+      comment: r.comment ?? '',
+    });
+    const parts = r.participant_names
+      ? r.participant_names.split(' · ').map(name => ({
+          full_name: name,
+          is_minor: r.minor_names?.split(' · ').includes(name) ?? false,
+        }))
+      : [{ full_name: '', is_minor: false }];
+    setManualParticipants(parts.length ? parts : [{ full_name: '', is_minor: false }]);
+    setShowManualForm(true);
+  }
+
   async function submitManualReservation(e: React.FormEvent) {
     e.preventDefault();
     setManualSubmitting(true);
     try {
-      const res = await fetch('/api/organizer/reservations', {
-        method: 'POST',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...manualForm,
-          amount_cents: manualForm.amount_cents ? Math.round(parseFloat(manualForm.amount_cents) * 100) : null,
-          participants: manualParticipants.filter(p => p.full_name.trim()),
-        }),
-      });
+      const body = {
+        ...manualForm,
+        amount_cents: manualForm.amount_cents ? Math.round(parseFloat(manualForm.amount_cents) * 100) : null,
+        participants: manualParticipants.filter(p => p.full_name.trim()),
+      };
+
+      let res;
+      if (editingReservation) {
+        res = await fetch(`/api/organizer/reservations/${editingReservation.id}`, {
+          method: 'PATCH',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+      } else {
+        res = await fetch('/api/organizer/reservations', {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+      }
+
       const data = await res.json();
       if (res.ok) {
-        setShowManualForm(false);
-        setManualForm({ customer_name: '', email: '', phone: '', quantity: 1, amount_cents: '', comment: '' });
-        setManualParticipants([{ full_name: '', is_minor: false }]);
+        resetManualForm();
         fetchReservations(reservationFilter);
-        alert('Réservation ajoutée et email envoyé !');
+        if (!editingReservation) alert('Réservation ajoutée et email envoyé !');
       } else {
-        alert(data.error ?? 'Erreur lors de l\'ajout');
+        alert(data.error ?? 'Erreur');
       }
     } catch {
       alert('Erreur réseau');
     } finally {
       setManualSubmitting(false);
     }
+  }
+
+  async function deleteReservation(id: number, name: string) {
+    if (!confirm(`Supprimer la réservation de ${name} ? Cette action est irréversible.`)) return;
+    try {
+      const res = await fetch(`/api/organizer/reservations/${id}`, { method: 'DELETE', headers });
+      if (res.ok) fetchReservations(reservationFilter);
+      else alert('Erreur lors de la suppression');
+    } catch { alert('Erreur réseau'); }
+  }
+
+  function toggleRow(id: number) {
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   }
 
   function logout() {
@@ -443,242 +500,320 @@ export function OrganizerDashboard() {
           </>
         )}
 
-        {/* Reservations (Stripe) tab */}
-        {tab === 'reservations' && (
-          <>
-            <div className="dk-section-header">
-              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.5rem', fontWeight: 700, color: '#5F3636', margin: 0 }}>
-                Réservations Stripe ({reservations.filter(r => reservationFilter === 'all' || r.status === reservationFilter).length})
-              </h2>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                {/* Filtre par statut */}
-                <select
-                  value={reservationFilter}
-                  onChange={e => { setReservationFilter(e.target.value); fetchReservations(e.target.value); }}
-                  style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', padding: '0.45rem 0.75rem', border: '1px solid rgba(95,54,54,0.2)', background: '#FBF7EF', color: '#5F3636', cursor: 'pointer' }}
-                >
-                  <option value="all">Tous les statuts</option>
-                  <option value="paid">Payées</option>
-                  <option value="pending">En attente</option>
-                  <option value="cancelled">Annulées</option>
-                </select>
-                <button
-                  onClick={() => fetchReservations(reservationFilter)}
-                  style={{ background: '#EAE4D8', color: '#5F3636', border: 'none', padding: '0.45rem 0.9rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', cursor: 'pointer' }}
-                >
-                  Actualiser
-                </button>
-                <button
-                  onClick={() => setShowManualForm(true)}
-                  style={{ background: '#C9A700', color: '#fff', border: 'none', padding: '0.45rem 1rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
-                >
-                  <Plus size={13} /> Ajouter manuellement
-                </button>
-                {reservations.length > 0 && (
+        {/* Reservations tab */}
+        {tab === 'reservations' && (() => {
+          const filtered = reservations.filter(r => reservationFilter === 'all' || r.status === reservationFilter);
+          const paid = reservations.filter(r => r.status === 'paid');
+          const pending = reservations.filter(r => r.status === 'pending');
+          const totalEuros = paid.reduce((s, r) => s + (r.amount_cents ?? 0), 0) / 100;
+          const totalPlaces = paid.reduce((s, r) => s + r.quantity, 0);
+
+          const kpis = [
+            { label: 'Places payées', value: String(totalPlaces), accent: '#2E7D32' },
+            { label: 'Réservations', value: String(paid.length), accent: '#5F3636' },
+            { label: 'En attente', value: String(pending.length), accent: '#E65100' },
+            { label: 'Encaissé', value: `${totalEuros.toFixed(2)} €`, accent: '#C9A700' },
+          ];
+
+          const filterBtns = [
+            { key: 'all', label: 'Tous' },
+            { key: 'paid', label: 'Payées' },
+            { key: 'pending', label: 'En attente' },
+            { key: 'cancelled', label: 'Annulées' },
+          ];
+
+          return (
+            <>
+              {/* Barre d'actions */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', marginBottom: '1.5rem', justifyContent: 'space-between' }}>
+                <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.4rem', fontWeight: 700, color: '#5F3636', margin: 0 }}>
+                  Réservations gaming
+                </h2>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                   <button
-                    onClick={() => exportReservationsCSV(reservations, `reservations-gaming.csv`)}
-                    style={{ background: '#5F3636', color: '#F4EFE4', border: 'none', padding: '0.45rem 1rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                    onClick={() => { resetManualForm(); setShowManualForm(true); }}
+                    style={{ background: '#C9A700', color: '#fff', border: 'none', padding: '0.5rem 1rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 600 }}
                   >
-                    <Download size={13} /> Export CSV
+                    <Plus size={13} /> Ajouter
                   </button>
-                )}
-              </div>
-            </div>
-
-            {/* Résumé rapide */}
-            {reservations.length > 0 && (() => {
-              const paid    = reservations.filter(r => r.status === 'paid');
-              const pending = reservations.filter(r => r.status === 'pending');
-              const totalEuros = paid.reduce((s, r) => s + (r.amount_cents ?? 0), 0) / 100;
-              const totalPlaces = paid.reduce((s, r) => s + r.quantity, 0);
-              return (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1px', marginBottom: '1.5rem' }}>
-                  {[
-                    { label: 'Places payées', value: totalPlaces },
-                    { label: 'Réservations payées', value: paid.length },
-                    { label: 'En attente', value: pending.length },
-                    { label: 'Total encaissé', value: `${totalEuros.toFixed(2)} €` },
-                  ].map(({ label, value }) => (
-                    <div key={label} style={{ background: '#F4EFE4', padding: '0.875rem 1.25rem', flex: '1 1 140px' }}>
-                      <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C9A700', margin: 0, marginBottom: '0.25rem' }}>{label}</p>
-                      <p style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.4rem', fontWeight: 700, color: '#5F3636', margin: 0 }}>{value}</p>
-                    </div>
-                  ))}
+                  {reservations.length > 0 && (
+                    <button
+                      onClick={() => exportReservationsCSV(filtered, `reservations-gaming.csv`)}
+                      style={{ background: '#EAE4D8', color: '#5F3636', border: 'none', padding: '0.5rem 1rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                    >
+                      <Download size={13} /> CSV
+                    </button>
+                  )}
+                  <button
+                    onClick={() => fetchReservations(reservationFilter)}
+                    style={{ background: '#EAE4D8', color: '#5F3636', border: 'none', padding: '0.5rem 0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                    title="Actualiser"
+                  >
+                    ↻
+                  </button>
                 </div>
-              );
-            })()}
-
-            {reservations.length === 0 ? (
-              <div style={{ background: '#EAE4D8', padding: '3rem', textAlign: 'center', fontFamily: "'DM Sans', sans-serif", color: '#6B5D52' }}>
-                Aucune réservation pour le moment.{' '}
-                <button onClick={() => fetchReservations()} style={{ background: 'none', border: 'none', color: '#5F3636', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit' }}>
-                  Charger
-                </button>
               </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                {reservations
-                  .filter(r => reservationFilter === 'all' || r.status === reservationFilter)
-                  .map(r => (
-                    <div key={r.id} style={{ background: '#FBF7EF', padding: '1rem 1.25rem', display: 'grid', gap: '0.5rem' }}>
-                      {/* Ligne 1 : identité + statut + montant */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.95rem', fontWeight: 600, color: '#5F3636' }}>{r.customer_name}</span>
-                          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.7rem', color: '#6B5D52' }}>{r.email}</span>
-                          {r.phone && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.7rem', color: '#9B8F89' }}>{r.phone}</span>}
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <span style={{
-                            fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.06em',
-                            textTransform: 'uppercase', padding: '0.2rem 0.6rem',
-                            background: STATUS_COLOR[r.status]?.bg ?? '#eee',
-                            color: STATUS_COLOR[r.status]?.color ?? '#333',
-                          }}>
-                            {STATUS_LABEL[r.status] ?? r.status}
-                          </span>
-                          <span style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1rem', fontWeight: 700, color: '#5F3636' }}>
-                            {r.amount_cents ? `${(r.amount_cents / 100).toFixed(2)} €` : '—'}
-                          </span>
-                          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.7rem', color: '#9B8F89' }}>
-                            {r.quantity} place{r.quantity > 1 ? 's' : ''}
-                          </span>
-                        </div>
-                      </div>
 
-                      {/* Ligne 2 : participants */}
-                      {r.participant_names && (
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#C9A700', flexShrink: 0, marginTop: 2 }}>Participants</span>
-                          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: '#5F3636' }}>{r.participant_names}</span>
-                          {r.minor_count > 0 && (
-                            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', background: 'rgba(255,152,0,0.12)', color: '#E65100', padding: '0.15rem 0.5rem' }}>
-                              {r.minor_count} mineur{r.minor_count > 1 ? 's' : ''}
+              {/* KPIs */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                {kpis.map(({ label, value, accent }) => (
+                  <div key={label} style={{ background: '#fff', border: '1px solid rgba(95,54,54,0.08)', borderLeft: `3px solid ${accent}`, padding: '0.875rem 1rem' }}>
+                    <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.58rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9B8F89', margin: '0 0 0.3rem' }}>{label}</p>
+                    <p style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.5rem', fontWeight: 700, color: '#5F3636', margin: 0 }}>{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Filtres statut */}
+              <div style={{ display: 'flex', gap: '2px', marginBottom: '1rem' }}>
+                {filterBtns.map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => { setReservationFilter(key); fetchReservations(key); }}
+                    style={{
+                      fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', padding: '0.4rem 0.9rem',
+                      border: 'none', cursor: 'pointer',
+                      background: reservationFilter === key ? '#5F3636' : '#EAE4D8',
+                      color: reservationFilter === key ? '#F4EFE4' : '#5F3636',
+                      fontWeight: reservationFilter === key ? 600 : 400,
+                    }}
+                  >
+                    {label}
+                    {key !== 'all' && (
+                      <span style={{ marginLeft: '0.4rem', opacity: 0.7, fontSize: '0.7rem' }}>
+                        ({reservations.filter(r => r.status === key).length})
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Liste */}
+              {filtered.length === 0 ? (
+                <div style={{ background: '#F4EFE4', padding: '3rem', textAlign: 'center', fontFamily: "'DM Sans', sans-serif", color: '#9B8F89', border: '1px dashed rgba(95,54,54,0.15)' }}>
+                  <p style={{ margin: '0 0 1rem', fontSize: '1rem' }}>Aucune réservation ici.</p>
+                  <button onClick={() => { resetManualForm(); setShowManualForm(true); }} style={{ background: '#C9A700', color: '#fff', border: 'none', padding: '0.6rem 1.25rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', cursor: 'pointer', fontWeight: 600 }}>
+                    + Ajouter manuellement
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                  {filtered.map(r => {
+                    const expanded = expandedRows.has(r.id);
+                    const sc = STATUS_COLOR[r.status];
+                    return (
+                      <div key={r.id} style={{ background: '#fff', border: '1px solid rgba(95,54,54,0.07)', borderLeft: `3px solid ${sc?.color ?? '#ccc'}`, overflow: 'hidden' }}>
+                        {/* Ligne principale */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.875rem 1rem', flexWrap: 'wrap' }}>
+                          {/* Identité */}
+                          <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+                            <p style={{ margin: 0, fontFamily: "'DM Sans', sans-serif", fontSize: '0.95rem', fontWeight: 600, color: '#5F3636', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {r.customer_name}
+                            </p>
+                            <p style={{ margin: '0.1rem 0 0', fontFamily: "'DM Mono', monospace", fontSize: '0.7rem', color: '#9B8F89' }}>
+                              {r.email}{r.phone ? ` · ${r.phone}` : ''}
+                            </p>
+                          </div>
+
+                          {/* Badges */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.7rem', background: '#F4EFE4', color: '#5F3636', padding: '0.2rem 0.55rem', fontWeight: 600 }}>
+                              {r.quantity} pl.
                             </span>
-                          )}
+                            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.05em', textTransform: 'uppercase', padding: '0.2rem 0.6rem', background: sc?.bg, color: sc?.color }}>
+                              {STATUS_LABEL[r.status]}
+                            </span>
+                            <span style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '0.95rem', fontWeight: 700, color: '#5F3636', minWidth: '3.5rem', textAlign: 'right' }}>
+                              {r.amount_cents ? `${(r.amount_cents / 100).toFixed(2)} €` : '—'}
+                            </span>
+                          </div>
+
+                          {/* Actions */}
+                          <div style={{ display: 'flex', gap: '2px', marginLeft: 'auto', flexShrink: 0 }}>
+                            <button
+                              onClick={() => toggleRow(r.id)}
+                              style={{ background: '#F4EFE4', border: 'none', padding: '0.4rem 0.6rem', cursor: 'pointer', color: '#6B5D52', display: 'flex', alignItems: 'center' }}
+                              title={expanded ? 'Réduire' : 'Voir détails'}
+                            >
+                              {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                            </button>
+                            <button
+                              onClick={() => openEditReservation(r)}
+                              style={{ background: '#F4EFE4', border: 'none', padding: '0.4rem 0.6rem', cursor: 'pointer', color: '#5F3636', display: 'flex', alignItems: 'center' }}
+                              title="Modifier"
+                            >
+                              <Pencil size={13} />
+                            </button>
+                            <button
+                              onClick={() => deleteReservation(r.id, r.customer_name)}
+                              style={{ background: 'rgba(192,50,50,0.06)', border: 'none', padding: '0.4rem 0.6rem', cursor: 'pointer', color: '#c03232', display: 'flex', alignItems: 'center' }}
+                              title="Supprimer"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
                         </div>
-                      )}
 
-                      {/* Ligne 3 : matériel + source + commentaire */}
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-                        {r.equipment && (
-                          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', color: '#6B5D52' }}>
-                            <span style={{ color: '#C9A700', fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Matériel </span>
-                            {r.equipment}
-                          </span>
+                        {/* Détails expandés */}
+                        {expanded && (
+                          <div style={{ borderTop: '1px solid rgba(95,54,54,0.07)', padding: '0.75rem 1rem', background: '#FDFAF5', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                            {r.participant_names && (
+                              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#C9A700' }}>Participants</span>
+                                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: '#5F3636' }}>{r.participant_names}</span>
+                                {r.minor_count > 0 && (
+                                  <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', background: 'rgba(255,152,0,0.1)', color: '#E65100', padding: '0.15rem 0.45rem' }}>
+                                    {r.minor_count} mineur{r.minor_count > 1 ? 's' : ''}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {r.equipment && (
+                              <p style={{ margin: 0, fontFamily: "'DM Sans', sans-serif", fontSize: '0.82rem', color: '#6B5D52' }}>
+                                <span style={{ color: '#C9A700', fontFamily: "'DM Mono', monospace", fontSize: '0.58rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Matériel </span>
+                                {r.equipment}
+                              </p>
+                            )}
+                            {r.comment && (
+                              <p style={{ margin: 0, fontFamily: "'DM Sans', sans-serif", fontSize: '0.82rem', color: '#6B5D52', fontStyle: 'italic' }}>"{r.comment}"</p>
+                            )}
+                            {r.utm_source && (
+                              <p style={{ margin: 0, fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', color: '#B0A098' }}>
+                                Source : {[r.utm_source, r.utm_medium, r.utm_campaign].filter(Boolean).join(' / ')}
+                              </p>
+                            )}
+                            <p style={{ margin: 0, fontFamily: "'DM Mono', monospace", fontSize: '0.62rem', color: '#C0B8B0' }}>
+                              {new Date(r.created_at).toLocaleString('fr-FR')}
+                            </p>
+                          </div>
                         )}
-                        {r.utm_source && (
-                          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', color: '#9B8F89' }}>
-                            Source : {[r.utm_source, r.utm_medium, r.utm_campaign].filter(Boolean).join(' / ')}
-                          </span>
-                        )}
-                        {r.comment && (
-                          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', color: '#6B5D52', fontStyle: 'italic' }}>
-                            "{r.comment}"
-                          </span>
-                        )}
-                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', color: '#B0A098', marginLeft: 'auto' }}>
-                          {new Date(r.created_at).toLocaleString('fr-FR')}
-                        </span>
                       </div>
-                    </div>
-                  ))}
-              </div>
-            )}
-          </>
-        )}
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          );
+        })()}
 
-        {/* Modal ajout manuel de réservation */}
+        {/* Modal ajout / édition de réservation */}
         {showManualForm && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-            <div style={{ background: '#FBF7EF', width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', padding: '2rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.3rem', fontWeight: 700, color: '#5F3636', margin: 0 }}>Ajouter une réservation</h2>
-                <button onClick={() => setShowManualForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#5F3636' }}><X size={20} /></button>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(30,15,15,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={e => e.target === e.currentTarget && resetManualForm()}>
+            <div style={{ background: '#fff', width: '100%', maxWidth: 540, maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+              {/* Header modale */}
+              <div style={{ background: '#5F3636', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.2rem', fontWeight: 700, color: '#F4EFE4', margin: 0 }}>
+                  {editingReservation ? 'Modifier la réservation' : 'Nouvelle réservation'}
+                </h2>
+                <button onClick={resetManualForm} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', cursor: 'pointer', color: '#F4EFE4', padding: '0.3rem', display: 'flex', borderRadius: '2px' }}><X size={18} /></button>
               </div>
-              <form onSubmit={submitManualReservation} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
 
-                {/* Réservant */}
-                <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C9A700', margin: 0 }}>Réservant</p>
-                {[
-                  { label: 'Nom complet *', key: 'customer_name', type: 'text', required: true },
-                  { label: 'Email *', key: 'email', type: 'email', required: true },
-                  { label: 'Téléphone', key: 'phone', type: 'tel', required: false },
-                ].map(({ label, key, type, required }) => (
-                  <div key={key}>
-                    <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', color: '#6B5D52', display: 'block', marginBottom: '0.25rem' }}>{label}</label>
-                    <input
-                      type={type}
-                      required={required}
-                      value={(manualForm as any)[key]}
-                      onChange={e => setManualForm(f => ({ ...f, [key]: e.target.value }))}
-                      style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid rgba(95,54,54,0.2)', background: '#fff', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#5F3636', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                ))}
+              <form onSubmit={submitManualReservation} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-                {/* Réservation */}
-                <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C9A700', margin: '0.5rem 0 0' }}>Réservation</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div>
-                    <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', color: '#6B5D52', display: 'block', marginBottom: '0.25rem' }}>Nombre de places *</label>
-                    <input
-                      type="number" min={1} max={10} required
-                      value={manualForm.quantity}
-                      onChange={e => {
-                        const qty = parseInt(e.target.value) || 1;
-                        setManualForm(f => ({ ...f, quantity: qty }));
-                        setManualParticipants(Array.from({ length: qty }, (_, i) => manualParticipants[i] ?? { full_name: '', is_minor: false }));
-                      }}
-                      style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid rgba(95,54,54,0.2)', background: '#fff', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#5F3636', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', color: '#6B5D52', display: 'block', marginBottom: '0.25rem' }}>Montant encaissé (€)</label>
-                    <input
-                      type="number" step="0.01" min={0} placeholder="ex: 5.00"
-                      value={manualForm.amount_cents}
-                      onChange={e => setManualForm(f => ({ ...f, amount_cents: e.target.value }))}
-                      style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid rgba(95,54,54,0.2)', background: '#fff', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#5F3636', boxSizing: 'border-box' }}
-                    />
+                {/* Section : Réservant */}
+                <div>
+                  <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#C9A700', margin: '0 0 0.75rem', borderBottom: '1px solid #F4EFE4', paddingBottom: '0.4rem' }}>Réservant</p>
+                  <div style={{ display: 'grid', gap: '0.75rem' }}>
+                    {[
+                      { label: 'Nom complet *', key: 'customer_name', type: 'text', required: true },
+                      { label: 'Email *', key: 'email', type: 'email', required: true },
+                      { label: 'Téléphone', key: 'phone', type: 'tel', required: false },
+                    ].map(({ label, key, type, required }) => (
+                      <div key={key}>
+                        <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#6B5D52', display: 'block', marginBottom: '0.3rem' }}>{label}</label>
+                        <input
+                          type={type} required={required}
+                          value={(manualForm as any)[key]}
+                          onChange={e => setManualForm(f => ({ ...f, [key]: e.target.value }))}
+                          style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #EAE4D8', background: '#FDFAF5', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#5F3636', boxSizing: 'border-box', outline: 'none' }}
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                {/* Participants */}
-                <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C9A700', margin: '0.5rem 0 0' }}>Participants</p>
-                {manualParticipants.map((p, i) => (
-                  <div key={i} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                    <input
-                      type="text"
-                      placeholder={`Participant ${i + 1}`}
-                      value={p.full_name}
-                      onChange={e => setManualParticipants(arr => arr.map((x, j) => j === i ? { ...x, full_name: e.target.value } : x))}
-                      style={{ flex: 1, padding: '0.6rem 0.75rem', border: '1px solid rgba(95,54,54,0.2)', background: '#fff', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#5F3636' }}
-                    />
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', color: '#6B5D52', whiteSpace: 'nowrap', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={p.is_minor} onChange={e => setManualParticipants(arr => arr.map((x, j) => j === i ? { ...x, is_minor: e.target.checked } : x))} />
-                      Mineur
-                    </label>
+                {/* Section : Réservation */}
+                <div>
+                  <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#C9A700', margin: '0 0 0.75rem', borderBottom: '1px solid #F4EFE4', paddingBottom: '0.4rem' }}>Réservation</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+                    <div>
+                      <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#6B5D52', display: 'block', marginBottom: '0.3rem' }}>Places *</label>
+                      <input
+                        type="number" min={1} max={10} required
+                        value={manualForm.quantity}
+                        onChange={e => {
+                          const qty = parseInt(e.target.value) || 1;
+                          setManualForm(f => ({ ...f, quantity: qty }));
+                          setManualParticipants(Array.from({ length: qty }, (_, i) => manualParticipants[i] ?? { full_name: '', is_minor: false }));
+                        }}
+                        style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #EAE4D8', background: '#FDFAF5', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#5F3636', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#6B5D52', display: 'block', marginBottom: '0.3rem' }}>Montant (€)</label>
+                      <input
+                        type="number" step="0.01" min={0} placeholder="5.00"
+                        value={manualForm.amount_cents}
+                        onChange={e => setManualForm(f => ({ ...f, amount_cents: e.target.value }))}
+                        style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #EAE4D8', background: '#FDFAF5', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#5F3636', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#6B5D52', display: 'block', marginBottom: '0.3rem' }}>Statut</label>
+                      <select
+                        value={manualForm.status}
+                        onChange={e => setManualForm(f => ({ ...f, status: e.target.value }))}
+                        style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #EAE4D8', background: '#FDFAF5', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#5F3636', boxSizing: 'border-box' }}
+                      >
+                        <option value="paid">Payé</option>
+                        <option value="pending">En attente</option>
+                        <option value="cancelled">Annulé</option>
+                        <option value="refunded">Remboursé</option>
+                      </select>
+                    </div>
                   </div>
-                ))}
+                </div>
+
+                {/* Section : Participants */}
+                <div>
+                  <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#C9A700', margin: '0 0 0.75rem', borderBottom: '1px solid #F4EFE4', paddingBottom: '0.4rem' }}>Participants</p>
+                  <div style={{ display: 'grid', gap: '0.5rem' }}>
+                    {manualParticipants.map((p, i) => (
+                      <div key={i} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', color: '#B0A098', width: '1.2rem', flexShrink: 0, textAlign: 'center' }}>{i + 1}</span>
+                        <input
+                          type="text" placeholder={`Nom du participant ${i + 1}`}
+                          value={p.full_name}
+                          onChange={e => setManualParticipants(arr => arr.map((x, j) => j === i ? { ...x, full_name: e.target.value } : x))}
+                          style={{ flex: 1, padding: '0.55rem 0.75rem', border: '1px solid #EAE4D8', background: '#FDFAF5', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: '#5F3636' }}
+                        />
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#6B5D52', whiteSpace: 'nowrap', cursor: 'pointer', flexShrink: 0 }}>
+                          <input type="checkbox" checked={p.is_minor} onChange={e => setManualParticipants(arr => arr.map((x, j) => j === i ? { ...x, is_minor: e.target.checked } : x))} />
+                          Mineur
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
                 {/* Commentaire */}
                 <div>
-                  <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', color: '#6B5D52', display: 'block', marginBottom: '0.25rem' }}>Commentaire (ex: payé en espèces, WhatsApp...)</label>
+                  <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#6B5D52', display: 'block', marginBottom: '0.3rem' }}>Commentaire</label>
                   <input
-                    type="text"
+                    type="text" placeholder="ex: payé en espèces, contacté via WhatsApp..."
                     value={manualForm.comment}
                     onChange={e => setManualForm(f => ({ ...f, comment: e.target.value }))}
-                    style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid rgba(95,54,54,0.2)', background: '#fff', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#5F3636', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #EAE4D8', background: '#FDFAF5', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: '#5F3636', boxSizing: 'border-box' }}
                   />
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-                  <button type="button" onClick={() => setShowManualForm(false)} style={{ background: 'none', border: '1px solid rgba(95,54,54,0.2)', color: '#6B5D52', padding: '0.6rem 1.25rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', cursor: 'pointer' }}>
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', paddingTop: '0.5rem', borderTop: '1px solid #F4EFE4' }}>
+                  <button type="button" onClick={resetManualForm} style={{ background: 'none', border: '1px solid #EAE4D8', color: '#6B5D52', padding: '0.65rem 1.25rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', cursor: 'pointer' }}>
                     Annuler
                   </button>
-                  <button type="submit" disabled={manualSubmitting} style={{ background: '#5F3636', color: '#F4EFE4', border: 'none', padding: '0.6rem 1.5rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', fontWeight: 600, cursor: manualSubmitting ? 'wait' : 'pointer', opacity: manualSubmitting ? 0.7 : 1 }}>
-                    {manualSubmitting ? 'Envoi...' : 'Ajouter + envoyer email'}
+                  <button type="submit" disabled={manualSubmitting} style={{ background: '#5F3636', color: '#F4EFE4', border: 'none', padding: '0.65rem 1.5rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', fontWeight: 600, cursor: manualSubmitting ? 'wait' : 'pointer', opacity: manualSubmitting ? 0.7 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    {manualSubmitting ? 'Enregistrement...' : editingReservation ? <><Pencil size={13} /> Enregistrer</> : <><Mail size={13} /> Ajouter + email</>}
                   </button>
                 </div>
 
