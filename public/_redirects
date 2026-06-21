@@ -1,1 +1,8 @@
+# ── Liens courts UTM — Soirée Gaming ─────────────────────────────────────────
+/g/meta     /gaming?utm_source=meta&utm_medium=paid&utm_campaign=gaming_26_juin       302
+/g/wa       /gaming?utm_source=whatsapp&utm_medium=message&utm_campaign=gaming_26_juin 302
+/g/email    /gaming?utm_source=email&utm_medium=newsletter&utm_campaign=gaming_26_juin 302
+/g/qr       /gaming?utm_source=qr&utm_medium=print&utm_campaign=gaming_26_juin         302
+
+# ── SPA fallback (doit rester en dernier) ────────────────────────────────────
 /*    /index.html    200
