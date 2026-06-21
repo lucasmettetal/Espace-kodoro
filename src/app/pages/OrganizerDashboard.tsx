@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { LogOut, Plus, Users, Calendar, X, Pencil, Trash2, Download, UserPlus, Settings, ChevronDown, ChevronUp, Mail } from 'lucide-react';
+import { LogOut, Plus, Users, Calendar, X, Pencil, Trash2, Download, UserPlus, Settings, ChevronDown, ChevronUp, Mail, Send } from 'lucide-react';
 
 type Event = {
   id: number;
@@ -109,7 +109,7 @@ export function OrganizerDashboard() {
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<'events' | 'registrations' | 'reservations' | 'team' | 'organizers' | 'site'>('events');
+  const [tab, setTab] = useState<'events' | 'registrations' | 'reservations' | 'campaigns' | 'team' | 'organizers' | 'site'>('events');
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [reservationFilter, setReservationFilter] = useState<string>('all');
   const [showManualForm, setShowManualForm] = useState(false);
@@ -118,6 +118,15 @@ export function OrganizerDashboard() {
   const [manualParticipants, setManualParticipants] = useState<{ full_name: string; is_minor: boolean }[]>([{ full_name: '', is_minor: false }]);
   const [manualSubmitting, setManualSubmitting] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+
+  // ── Campagnes ──────────────────────────────────────────────────────────────
+  type Campaign = { id: number; list_name: string; subject: string; sender_email: string; created_at: string; sent_at: string | null; sent_count: number; failed_count: number };
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [campaignForm, setCampaignForm] = useState({ list_name: 'gaming', subject: '', html_content: '' });
+  const [campaignStats, setCampaignStats] = useState<{ subscribed: number } | null>(null);
+  const [campaignSending, setCampaignSending] = useState(false);
+  const [campaignPreviewCount, setCampaignPreviewCount] = useState<number | null>(null);
+
   const [organizers, setOrganizers] = useState<{id: number, name: string, email: string, is_admin: number, created_at: string}[]>([]);
   const [teamForm, setTeamForm] = useState({ name: '', email: '', password: '' });
   const [teamError, setTeamError] = useState('');
@@ -217,6 +226,58 @@ export function OrganizerDashboard() {
         setReservations(data.reservations ?? []);
       }
     } catch { /* pas de backend en local */ }
+  }
+
+  async function fetchCampaigns() {
+    try {
+      const res = await fetch('/api/organizer/campaigns', { headers });
+      if (res.ok) { const d = await res.json(); setCampaigns(d.campaigns ?? []); }
+    } catch { /* pas de backend en local */ }
+  }
+
+  async function fetchContactStats(listName: string) {
+    try {
+      const res = await fetch(`/api/organizer/contacts?list=${listName}`, { headers });
+      if (res.ok) { const d = await res.json(); setCampaignStats(d.stats); }
+    } catch { /* */ }
+  }
+
+  async function previewCampaign() {
+    if (!campaignForm.list_name) return;
+    try {
+      const res = await fetch('/api/organizer/campaigns', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...campaignForm, preview_only: true }),
+      });
+      if (res.ok) { const d = await res.json(); setCampaignPreviewCount(d.recipient_count); }
+    } catch { /* */ }
+  }
+
+  async function sendCampaign() {
+    if (!campaignForm.subject.trim() || !campaignForm.html_content.trim()) {
+      alert('Remplis le sujet et le contenu.');
+      return;
+    }
+    if (!confirm(`Envoyer à ${campaignPreviewCount ?? '?'} contacts ? Cette action est irréversible.`)) return;
+    setCampaignSending(true);
+    try {
+      const res = await fetch('/api/organizer/campaigns', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(campaignForm),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        alert(`✅ ${d.sent} emails envoyés${d.failed > 0 ? ` (${d.failed} échecs)` : ''}.`);
+        setCampaignForm(f => ({ ...f, subject: '', html_content: '' }));
+        setCampaignPreviewCount(null);
+        fetchCampaigns();
+      } else {
+        alert(d.error ?? 'Erreur lors de l\'envoi');
+      }
+    } catch { alert('Erreur réseau'); }
+    finally { setCampaignSending(false); }
   }
 
   const resetManualForm = () => {
@@ -418,14 +479,15 @@ export function OrganizerDashboard() {
           {[
             { key: 'events', label: isAdmin ? 'Événements' : 'Mes événements', icon: Calendar },
             { key: 'registrations', label: 'Inscriptions', icon: Users },
-            { key: 'reservations', label: 'Réservations Stripe', icon: Calendar },
+            { key: 'reservations', label: 'Réservations', icon: Calendar },
+            { key: 'campaigns', label: 'Campagnes email', icon: Send },
             { key: 'site', label: 'Site', icon: Settings },
             { key: 'team', label: 'Équipe', icon: UserPlus },
             ...(isAdmin ? [{ key: 'organizers', label: 'Organisateurs', icon: Users }] : []),
           ].map(({ key, label, icon: Icon }) => (
             <button
               key={key}
-              onClick={() => { setTab(key as any); if (key === 'reservations') fetchReservations(); }}
+              onClick={() => { setTab(key as any); if (key === 'reservations') fetchReservations(); if (key === 'campaigns') { fetchCampaigns(); fetchContactStats('gaming'); } }}
               className="dk-tab-btn"
               style={{ background: tab === key ? '#5F3636' : '#EAE4D8', color: tab === key ? '#F4EFE4' : '#5F3636' }}
             >
@@ -821,6 +883,129 @@ export function OrganizerDashboard() {
             </div>
           </div>
         )}
+
+        {/* Campaigns tab */}
+        {tab === 'campaigns' && (() => {
+          const LIST_OPTIONS = [
+            { value: 'gaming',         label: 'Gaming',            sender: 'gaming@espace-kodoro.fr' },
+            { value: 'evenements',     label: 'Événements',        sender: 'evenements@espace-kodoro.fr' },
+            { value: 'kodoro_general', label: 'Général Ködörö',   sender: 'evenements@espace-kodoro.fr' },
+          ];
+          const currentList = LIST_OPTIONS.find(l => l.value === campaignForm.list_name) ?? LIST_OPTIONS[0];
+
+          return (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.4rem', fontWeight: 700, color: '#5F3636', margin: 0 }}>Campagnes email</h2>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 320px', gap: '1.5rem', alignItems: 'start' }}>
+
+                {/* Formulaire de création */}
+                <div style={{ background: '#fff', border: '1px solid rgba(95,54,54,0.08)', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#C9A700', margin: 0 }}>Nouvelle campagne</p>
+
+                  <div>
+                    <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#6B5D52', display: 'block', marginBottom: '0.3rem' }}>Liste destinataires</label>
+                    <select
+                      value={campaignForm.list_name}
+                      onChange={e => { setCampaignForm(f => ({ ...f, list_name: e.target.value })); setCampaignPreviewCount(null); fetchContactStats(e.target.value); }}
+                      style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #EAE4D8', background: '#FDFAF5', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#5F3636' }}
+                    >
+                      {LIST_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label} — {o.sender}</option>)}
+                    </select>
+                    {campaignStats && (
+                      <p style={{ margin: '0.4rem 0 0', fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', color: campaignStats.subscribed > 0 ? '#2E7D32' : '#9B8F89' }}>
+                        {campaignStats.subscribed} contact{campaignStats.subscribed > 1 ? 's' : ''} abonné{campaignStats.subscribed > 1 ? 's' : ''}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#6B5D52', display: 'block', marginBottom: '0.3rem' }}>Sujet *</label>
+                    <input
+                      type="text" placeholder="Ex: Soirée Gaming — Vendredi 26 juin 🎮"
+                      value={campaignForm.subject}
+                      onChange={e => setCampaignForm(f => ({ ...f, subject: e.target.value }))}
+                      style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #EAE4D8', background: '#FDFAF5', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#5F3636', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#6B5D52', display: 'block', marginBottom: '0.3rem' }}>Contenu HTML *</label>
+                    <textarea
+                      rows={12}
+                      placeholder={'<p>Bonjour,</p>\n<p>La prochaine soirée gaming est...</p>'}
+                      value={campaignForm.html_content}
+                      onChange={e => setCampaignForm(f => ({ ...f, html_content: e.target.value }))}
+                      style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #EAE4D8', background: '#FDFAF5', fontFamily: "'DM Mono', monospace", fontSize: '0.8rem', color: '#5F3636', boxSizing: 'border-box', resize: 'vertical' }}
+                    />
+                    <p style={{ margin: '0.4rem 0 0', fontFamily: "'DM Sans', sans-serif", fontSize: '0.72rem', color: '#9B8F89' }}>
+                      Un footer de désinscription sera ajouté automatiquement à chaque email.
+                    </p>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <button
+                      type="button"
+                      onClick={previewCampaign}
+                      style={{ background: '#EAE4D8', color: '#5F3636', border: 'none', padding: '0.65rem 1.25rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', cursor: 'pointer' }}
+                    >
+                      Vérifier ({campaignPreviewCount !== null ? `${campaignPreviewCount} destinataires` : '?'})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={sendCampaign}
+                      disabled={campaignSending || campaignPreviewCount === 0}
+                      style={{ flex: 1, background: campaignSending ? '#9B8F89' : '#5F3636', color: '#F4EFE4', border: 'none', padding: '0.65rem 1.25rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', fontWeight: 600, cursor: campaignSending ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
+                    >
+                      <Send size={14} /> {campaignSending ? 'Envoi en cours...' : 'Envoyer la campagne'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Panneau info */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {/* Expéditeur */}
+                  <div style={{ background: '#F4EFE4', padding: '1rem 1.25rem', borderLeft: '3px solid #C9A700' }}>
+                    <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.58rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C9A700', margin: '0 0 0.5rem' }}>Expéditeur</p>
+                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: '#5F3636', margin: 0 }}>{currentList.sender}</p>
+                  </div>
+
+                  {/* Bonnes pratiques */}
+                  <div style={{ background: '#fff', border: '1px solid rgba(95,54,54,0.08)', padding: '1rem 1.25rem' }}>
+                    <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.58rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C9A700', margin: '0 0 0.75rem' }}>Bonnes pratiques</p>
+                    {[
+                      'Sujet clair, sans majuscules agressives',
+                      'Peu de liens (1-2 max)',
+                      'Pas de pièce jointe',
+                      'Adresse cohérente avec la liste',
+                      'Ne pas envoyer plus d\'1 fois/semaine',
+                      'Le lien de désinscription est auto-ajouté',
+                    ].map(tip => (
+                      <p key={tip} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#6B5D52', margin: '0 0 0.4rem', paddingLeft: '0.75rem', borderLeft: '2px solid #EAE4D8' }}>{tip}</p>
+                    ))}
+                  </div>
+
+                  {/* Historique campagnes */}
+                  {campaigns.length > 0 && (
+                    <div style={{ background: '#fff', border: '1px solid rgba(95,54,54,0.08)', padding: '1rem 1.25rem' }}>
+                      <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.58rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C9A700', margin: '0 0 0.75rem' }}>Historique</p>
+                      {campaigns.slice(0, 5).map(c => (
+                        <div key={c.id} style={{ borderBottom: '1px solid #F4EFE4', paddingBottom: '0.5rem', marginBottom: '0.5rem' }}>
+                          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.82rem', color: '#5F3636', margin: '0 0 0.15rem', fontWeight: 500 }}>{c.subject}</p>
+                          <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.62rem', color: '#9B8F89', margin: 0 }}>
+                            {c.list_name} · {c.sent_at ? `${c.sent_count} envoyés` : 'Non envoyée'} · {new Date(c.created_at).toLocaleDateString('fr-FR')}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          );
+        })()}
 
         {/* Registrations tab */}
         {tab === 'registrations' && (

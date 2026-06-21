@@ -49,6 +49,7 @@ export async function onRequestPost({ request, env }) {
     utm_term,
     referrer,
     landing_page,
+    newsletter_consent = false,
   } = body;
 
   // Validation des champs obligatoires
@@ -116,8 +117,9 @@ export async function onRequestPost({ request, env }) {
       INSERT INTO reservations
         (event_id, customer_name, email, phone, quantity, status,
          amount_cents, utm_source, utm_medium, utm_campaign,
-         utm_content, utm_term, referrer, landing_page, comment, expires_at)
-      VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         utm_content, utm_term, referrer, landing_page, comment,
+         newsletter_consent, expires_at)
+      VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       event_id,
       customer_name.trim(),
@@ -133,6 +135,7 @@ export async function onRequestPost({ request, env }) {
       referrer     ?? null,
       landing_page ?? null,
       comment?.trim() || null,
+      newsletter_consent ? 1 : 0,
       expiresAt,
     ).run();
 

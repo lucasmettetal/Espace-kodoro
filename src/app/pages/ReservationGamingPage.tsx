@@ -37,6 +37,7 @@ type EventInfo = {
 };
 
 type FormData = {
+  newsletter_consent: boolean;
   customer_name: string;
   email: string;
   phone: string;
@@ -163,6 +164,7 @@ export function ReservationGamingPage() {
     participants: [emptyParticipant()],
     equipment: [],
     comment: '',
+    newsletter_consent: false,
   });
 
   const [submitting, setSubmitting] = useState(false);
@@ -214,8 +216,9 @@ export function ReservationGamingPage() {
           is_minor:  p.is_minor,
           age:       p.is_minor && p.age ? p.age : null,
         })),
-        equipment:    form.equipment,
-        comment:      form.comment.trim() || null,
+        equipment:         form.equipment,
+        comment:           form.comment.trim() || null,
+        newsletter_consent: form.newsletter_consent,
         utm_source:   utmParams.utm_source,
         utm_medium:   utmParams.utm_medium,
         utm_campaign: utmParams.utm_campaign,
@@ -538,6 +541,22 @@ export function ReservationGamingPage() {
                 onBlur={blurBorder as unknown as React.FocusEventHandler<HTMLTextAreaElement>}
               />
             </div>
+
+            {/* ── Consentement newsletter ──────────────────────────── */}
+            <label style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', cursor: 'pointer', padding: '1rem', background: 'rgba(201,167,0,0.06)', border: '1px solid rgba(201,167,0,0.2)' }}>
+              <input
+                type="checkbox"
+                checked={form.newsletter_consent}
+                onChange={e => setForm(p => ({ ...p, newsletter_consent: e.target.checked }))}
+                style={{ marginTop: '0.2rem', width: '16px', height: '16px', flexShrink: 0, accentColor: '#C9A700', cursor: 'pointer' }}
+              />
+              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: '#5F3636', lineHeight: 1.6 }}>
+                J'accepte de recevoir les informations sur les prochaines soirées gaming de l'Espace Ködörö.
+                <span style={{ display: 'block', fontSize: '0.75rem', color: '#9B8F89', marginTop: '0.2rem' }}>
+                  Optionnel — désinscription possible à tout moment.
+                </span>
+              </span>
+            </label>
 
             {/* ── Récapitulatif et bouton de paiement ─────────────── */}
             <div style={{ background: '#F4EFE4', border: '1px solid rgba(95,54,54,0.15)', padding: 'clamp(1.25rem, 3vw, 2rem)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>

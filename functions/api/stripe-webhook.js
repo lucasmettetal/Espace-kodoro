@@ -19,6 +19,40 @@
 
 import Stripe from 'stripe';
 
+// ── Upsert contact + abonnement ───────────────────────────────────────────────
+async function upsertContact(env, { email, first_name, last_name, phone, list_name }) {
+  try {
+    // Créer ou ignorer le contact
+    await env.DB.prepare(`
+      INSERT INTO contacts (email, first_name, last_name, phone, source)
+      VALUES (?, ?, ?, ?, 'reservation')
+      ON CONFLICT(email) DO UPDATE SET
+        first_name = COALESCE(excluded.first_name, first_name),
+        last_name  = COALESCE(excluded.last_name,  last_name),
+        phone      = COALESCE(excluded.phone,       phone),
+        updated_at = datetime('now')
+    `).bind(email, first_name, last_name, phone).run();
+
+    const contact = await env.DB.prepare('SELECT id FROM contacts WHERE email = ?').bind(email).first();
+    if (!contact) return;
+
+    // Générer un token de désinscription unique
+    const token = crypto.randomUUID();
+
+    await env.DB.prepare(`
+      INSERT INTO contact_subscriptions (contact_id, list_name, status, unsubscribe_token)
+      VALUES (?, ?, 'subscribed', ?)
+      ON CONFLICT(contact_id, list_name) DO UPDATE SET
+        status           = CASE WHEN status = 'unsubscribed' THEN status ELSE 'subscribed' END,
+        unsubscribe_token = CASE WHEN unsubscribe_token IS NULL THEN excluded.unsubscribe_token ELSE unsubscribe_token END
+    `).bind(contact.id, list_name, token).run();
+
+    console.log(`[webhook] Contact ${email} abonné à la liste "${list_name}"`);
+  } catch (err) {
+    console.error('[webhook] upsertContact error:', err);
+  }
+}
+
 // ── Email HTML de confirmation ────────────────────────────────────────────────
 function buildConfirmationEmail({ customerName, quantity, participants, eventDate, startTime, endTime, location, amountEuros, siteUrl }) {
   const participantList = participants.length > 0
@@ -209,6 +243,17 @@ export async function onRequestPost({ request, env }) {
           const { results: participants } = await env.DB.prepare(
             'SELECT full_name, is_minor, age FROM participants WHERE reservation_id = ?'
           ).bind(reservationId).all();
+
+          // Upsert contact + abonnement gaming si consentement donné
+          if (reservation.newsletter_consent) {
+            await upsertContact(env, {
+              email:      reservation.email,
+              first_name: reservation.customer_name?.split(' ')[0] ?? null,
+              last_name:  reservation.customer_name?.split(' ').slice(1).join(' ') || null,
+              phone:      reservation.phone ?? null,
+              list_name:  'gaming',
+            });
+          }
 
           await sendConfirmationEmail({
             env,
