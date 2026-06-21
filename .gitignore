@@ -34,6 +34,9 @@ dist/
 # Wrangler local state
 .wrangler/
 
+# Variables d'environnement locales Cloudflare (contient des clés secrètes — NE PAS COMMITER)
+.dev.vars
+
 # Scripts de test temporaires
 verify-script.js
 verify-script.mjs

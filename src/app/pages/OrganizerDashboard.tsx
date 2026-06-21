@@ -24,7 +24,63 @@ type Registration = {
   event_title: string;
 };
 
+type Reservation = {
+  id: number;
+  customer_name: string;
+  email: string;
+  phone: string;
+  quantity: number;
+  status: 'pending' | 'paid' | 'cancelled' | 'refunded';
+  amount_cents: number;
+  stripe_session_id: string;
+  utm_source: string;
+  utm_medium: string;
+  utm_campaign: string;
+  comment: string;
+  created_at: string;
+  event_title: string;
+  event_slug: string;
+  event_date: string;
+  participant_names: string;
+  minor_names: string;
+  minor_count: number;
+  equipment: string;
+};
+
 const emptyForm = { title: '', date: '', day: '', year: new Date().getFullYear().toString(), type: 'Soirée', description: '', price: '', spots_total: '0' };
+
+const STATUS_LABEL: Record<string, string> = {
+  paid: 'Payé', pending: 'En attente', cancelled: 'Annulé', refunded: 'Remboursé',
+};
+const STATUS_COLOR: Record<string, { bg: string; color: string }> = {
+  paid:      { bg: 'rgba(76,175,80,0.12)',  color: '#2E7D32' },
+  pending:   { bg: 'rgba(255,152,0,0.12)',  color: '#E65100' },
+  cancelled: { bg: 'rgba(158,158,158,0.15)', color: '#616161' },
+  refunded:  { bg: 'rgba(33,150,243,0.12)', color: '#0D47A1' },
+};
+
+function exportReservationsCSV(reservations: Reservation[], filename: string) {
+  const headers = ['Date', 'Réservant', 'Email', 'Téléphone', 'Places', 'Statut', 'Montant (€)', 'Participants', 'Mineurs', 'Matériel', 'Source', 'Commentaire'];
+  const rows = reservations.map(r => [
+    new Date(r.created_at).toLocaleDateString('fr-FR'),
+    r.customer_name,
+    r.email,
+    r.phone || '',
+    String(r.quantity),
+    STATUS_LABEL[r.status] ?? r.status,
+    r.amount_cents ? (r.amount_cents / 100).toFixed(2) : '',
+    r.participant_names || '',
+    r.minor_names || '',
+    r.equipment || '',
+    [r.utm_source, r.utm_medium, r.utm_campaign].filter(Boolean).join(' / '),
+    r.comment || '',
+  ]);
+  const csv = [headers, ...rows].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
 
 function exportCSV(registrations: Registration[], filename: string) {
   const headers = ['Nom', 'Email', 'Téléphone', 'Événement', 'Date inscription'];
@@ -53,7 +109,9 @@ export function OrganizerDashboard() {
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<'events' | 'registrations' | 'team' | 'organizers' | 'site'>('events');
+  const [tab, setTab] = useState<'events' | 'registrations' | 'reservations' | 'team' | 'organizers' | 'site'>('events');
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [reservationFilter, setReservationFilter] = useState<string>('all');
   const [organizers, setOrganizers] = useState<{id: number, name: string, email: string, is_admin: number, created_at: string}[]>([]);
   const [teamForm, setTeamForm] = useState({ name: '', email: '', password: '' });
   const [teamError, setTeamError] = useState('');
@@ -140,6 +198,18 @@ export function OrganizerDashboard() {
       const url = eventId ? `/api/organizer/registrations?event_id=${eventId}` : '/api/organizer/registrations';
       const res = await fetch(url, { headers });
       if (res.ok) setRegistrations(await res.json());
+    } catch { /* pas de backend en local */ }
+  }
+
+  async function fetchReservations(status?: string) {
+    try {
+      const params = new URLSearchParams();
+      if (status && status !== 'all') params.set('status', status);
+      const res = await fetch(`/api/organizer/reservations?${params}`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setReservations(data.reservations ?? []);
+      }
     } catch { /* pas de backend en local */ }
   }
 
@@ -257,13 +327,14 @@ export function OrganizerDashboard() {
           {[
             { key: 'events', label: isAdmin ? 'Événements' : 'Mes événements', icon: Calendar },
             { key: 'registrations', label: 'Inscriptions', icon: Users },
+            { key: 'reservations', label: 'Réservations Stripe', icon: Calendar },
             { key: 'site', label: 'Site', icon: Settings },
             { key: 'team', label: 'Équipe', icon: UserPlus },
             ...(isAdmin ? [{ key: 'organizers', label: 'Organisateurs', icon: Users }] : []),
           ].map(({ key, label, icon: Icon }) => (
             <button
               key={key}
-              onClick={() => setTab(key as any)}
+              onClick={() => { setTab(key as any); if (key === 'reservations') fetchReservations(); }}
               className="dk-tab-btn"
               style={{ background: tab === key ? '#5F3636' : '#EAE4D8', color: tab === key ? '#F4EFE4' : '#5F3636' }}
             >
@@ -333,6 +404,145 @@ export function OrganizerDashboard() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Reservations (Stripe) tab */}
+        {tab === 'reservations' && (
+          <>
+            <div className="dk-section-header">
+              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.5rem', fontWeight: 700, color: '#5F3636', margin: 0 }}>
+                Réservations Stripe ({reservations.filter(r => reservationFilter === 'all' || r.status === reservationFilter).length})
+              </h2>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                {/* Filtre par statut */}
+                <select
+                  value={reservationFilter}
+                  onChange={e => { setReservationFilter(e.target.value); fetchReservations(e.target.value); }}
+                  style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', padding: '0.45rem 0.75rem', border: '1px solid rgba(95,54,54,0.2)', background: '#FBF7EF', color: '#5F3636', cursor: 'pointer' }}
+                >
+                  <option value="all">Tous les statuts</option>
+                  <option value="paid">Payées</option>
+                  <option value="pending">En attente</option>
+                  <option value="cancelled">Annulées</option>
+                </select>
+                <button
+                  onClick={() => fetchReservations(reservationFilter)}
+                  style={{ background: '#EAE4D8', color: '#5F3636', border: 'none', padding: '0.45rem 0.9rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', cursor: 'pointer' }}
+                >
+                  Actualiser
+                </button>
+                {reservations.length > 0 && (
+                  <button
+                    onClick={() => exportReservationsCSV(reservations, `reservations-gaming.csv`)}
+                    style={{ background: '#5F3636', color: '#F4EFE4', border: 'none', padding: '0.45rem 1rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                  >
+                    <Download size={13} /> Export CSV
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Résumé rapide */}
+            {reservations.length > 0 && (() => {
+              const paid    = reservations.filter(r => r.status === 'paid');
+              const pending = reservations.filter(r => r.status === 'pending');
+              const totalEuros = paid.reduce((s, r) => s + (r.amount_cents ?? 0), 0) / 100;
+              const totalPlaces = paid.reduce((s, r) => s + r.quantity, 0);
+              return (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1px', marginBottom: '1.5rem' }}>
+                  {[
+                    { label: 'Places payées', value: totalPlaces },
+                    { label: 'Réservations payées', value: paid.length },
+                    { label: 'En attente', value: pending.length },
+                    { label: 'Total encaissé', value: `${totalEuros.toFixed(2)} €` },
+                  ].map(({ label, value }) => (
+                    <div key={label} style={{ background: '#F4EFE4', padding: '0.875rem 1.25rem', flex: '1 1 140px' }}>
+                      <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C9A700', margin: 0, marginBottom: '0.25rem' }}>{label}</p>
+                      <p style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.4rem', fontWeight: 700, color: '#5F3636', margin: 0 }}>{value}</p>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {reservations.length === 0 ? (
+              <div style={{ background: '#EAE4D8', padding: '3rem', textAlign: 'center', fontFamily: "'DM Sans', sans-serif", color: '#6B5D52' }}>
+                Aucune réservation pour le moment.{' '}
+                <button onClick={() => fetchReservations()} style={{ background: 'none', border: 'none', color: '#5F3636', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit' }}>
+                  Charger
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                {reservations
+                  .filter(r => reservationFilter === 'all' || r.status === reservationFilter)
+                  .map(r => (
+                    <div key={r.id} style={{ background: '#FBF7EF', padding: '1rem 1.25rem', display: 'grid', gap: '0.5rem' }}>
+                      {/* Ligne 1 : identité + statut + montant */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.95rem', fontWeight: 600, color: '#5F3636' }}>{r.customer_name}</span>
+                          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.7rem', color: '#6B5D52' }}>{r.email}</span>
+                          {r.phone && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.7rem', color: '#9B8F89' }}>{r.phone}</span>}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <span style={{
+                            fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.06em',
+                            textTransform: 'uppercase', padding: '0.2rem 0.6rem',
+                            background: STATUS_COLOR[r.status]?.bg ?? '#eee',
+                            color: STATUS_COLOR[r.status]?.color ?? '#333',
+                          }}>
+                            {STATUS_LABEL[r.status] ?? r.status}
+                          </span>
+                          <span style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1rem', fontWeight: 700, color: '#5F3636' }}>
+                            {r.amount_cents ? `${(r.amount_cents / 100).toFixed(2)} €` : '—'}
+                          </span>
+                          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.7rem', color: '#9B8F89' }}>
+                            {r.quantity} place{r.quantity > 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Ligne 2 : participants */}
+                      {r.participant_names && (
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#C9A700', flexShrink: 0, marginTop: 2 }}>Participants</span>
+                          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: '#5F3636' }}>{r.participant_names}</span>
+                          {r.minor_count > 0 && (
+                            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', background: 'rgba(255,152,0,0.12)', color: '#E65100', padding: '0.15rem 0.5rem' }}>
+                              {r.minor_count} mineur{r.minor_count > 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Ligne 3 : matériel + source + commentaire */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                        {r.equipment && (
+                          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', color: '#6B5D52' }}>
+                            <span style={{ color: '#C9A700', fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Matériel </span>
+                            {r.equipment}
+                          </span>
+                        )}
+                        {r.utm_source && (
+                          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', color: '#9B8F89' }}>
+                            Source : {[r.utm_source, r.utm_medium, r.utm_campaign].filter(Boolean).join(' / ')}
+                          </span>
+                        )}
+                        {r.comment && (
+                          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', color: '#6B5D52', fontStyle: 'italic' }}>
+                            "{r.comment}"
+                          </span>
+                        )}
+                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', color: '#B0A098', marginLeft: 'auto' }}>
+                          {new Date(r.created_at).toLocaleString('fr-FR')}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
               </div>
             )}
           </>

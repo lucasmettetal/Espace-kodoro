@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router';
 import { ActivityLayout } from './ActivityLayout';
 
 type SiteConfig = {
@@ -83,7 +84,6 @@ export function GamingPage() {
       .catch(() => {});
   }, []);
 
-  const stripeHref = cfg.gaming_stripe_link || '#contact';
   const waHref = cfg.gaming_whatsapp_link || '#contact';
 
   return (
@@ -110,16 +110,14 @@ export function GamingPage() {
             Un rendez-vous pour jouer, rencontrer d'autres joueurs et construire une communauté gaming locale.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-            <a
-              href={stripeHref}
-              target={cfg.gaming_stripe_link ? '_blank' : undefined}
-              rel="noopener noreferrer"
+            <Link
+              to="/reservation-gaming"
               style={{ display: 'inline-block', background: '#C9A700', color: '#F4EFE4', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', textDecoration: 'none', padding: '0.75rem 2rem', transition: 'background 0.2s' }}
               onMouseEnter={e => (e.currentTarget.style.background = '#D4B930')}
               onMouseLeave={e => (e.currentTarget.style.background = '#C9A700')}
             >
               Réserver la prochaine soirée
-            </a>
+            </Link>
             <a
               href={waHref}
               target={cfg.gaming_whatsapp_link ? '_blank' : undefined}
@@ -163,16 +161,14 @@ export function GamingPage() {
                   </div>
                 ))}
               </dl>
-              <a
-                href={stripeHref}
-                target={cfg.gaming_stripe_link ? '_blank' : undefined}
-                rel="noopener noreferrer"
+              <Link
+                to="/reservation-gaming"
                 style={{ display: 'inline-block', background: '#C9A700', color: '#F4EFE4', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', textDecoration: 'none', padding: '0.75rem 2rem', transition: 'background 0.2s' }}
                 onMouseEnter={e => (e.currentTarget.style.background = '#D4B930')}
                 onMouseLeave={e => (e.currentTarget.style.background = '#C9A700')}
               >
                 Réserver ma place — {cfg.gaming_prix}
-              </a>
+              </Link>
             </div>
 
             <div style={{ background: '#F4EFE4', border: '1px solid rgba(95,54,54,0.1)', padding: 'clamp(1.5rem, 3vw, 2rem)' }}>

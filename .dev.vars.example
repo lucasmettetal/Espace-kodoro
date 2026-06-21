@@ -1,0 +1,70 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Variables d'environnement pour le développement local
+# ─────────────────────────────────────────────────────────────────────────────
+# INSTRUCTIONS :
+#   1. Copiez ce fichier : cp .dev.vars.example .dev.vars
+#   2. Remplissez chaque valeur (ne commitez JAMAIS .dev.vars)
+#   3. Pour la production : ajoutez ces variables dans Cloudflare Pages
+#      → Dashboard Cloudflare → Pages → kodoro → Settings → Environment variables
+#
+# CE FICHIER peut être commité (c'est un exemple sans valeurs réelles).
+# .dev.vars NE DOIT PAS être commité (ajoutez-le à .gitignore).
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+# ── Stripe ────────────────────────────────────────────────────────────────────
+#
+# Où trouver ces clés :
+#   → https://dashboard.stripe.com/test/apikeys  (mode TEST)
+#   → https://dashboard.stripe.com/apikeys       (mode LIVE/production)
+#
+# STRIPE_SECRET_KEY :
+#   Clé secrète — commence par sk_test_... (test) ou sk_live_... (prod)
+#   Utilisée côté backend uniquement. Ne jamais l'exposer au frontend.
+#
+# STRIPE_WEBHOOK_SECRET :
+#   Secret de signature des webhooks — commence par whsec_...
+#   Obtenu lors de la création d'un endpoint webhook dans Stripe
+#   → Developers → Webhooks → Add endpoint → (créer l'endpoint) → Signing secret
+#   En développement local avec Stripe CLI :
+#     stripe listen --forward-to localhost:8788/api/stripe-webhook
+#     → la commande affiche le whsec_ à utiliser localement
+#
+
+STRIPE_SECRET_KEY=sk_test_REMPLACEZ_PAR_VOTRE_CLE_SECRETE
+STRIPE_WEBHOOK_SECRET=whsec_REMPLACEZ_PAR_VOTRE_WEBHOOK_SECRET
+
+# ── Site ──────────────────────────────────────────────────────────────────────
+#
+# URL publique du site (sans slash final).
+# Utilisée pour construire les URLs de retour Stripe (success_url, cancel_url).
+# En dev local, utilisez : http://localhost:8788
+# En production :          https://www.espace-kodoro.fr
+#
+
+SITE_URL=http://localhost:8788
+
+
+# ── Auth (existant) ───────────────────────────────────────────────────────────
+#
+# Déjà utilisé par le dashboard organisateur.
+# Changez-le en production par une valeur longue et aléatoire.
+#
+
+JWT_SECRET=kodoro-jwt-secret-dev
+
+
+# ── Resend (emails transactionnels) ──────────────────────────────────────────
+#
+# Où trouver la clé : https://resend.com/api-keys
+# Créer une clé avec permission "Sending access"
+#
+# EMAIL_FROM : adresse d'expéditeur. Doit être un domaine vérifié dans Resend.
+#   → Sans domaine vérifié : utiliser onboarding@resend.dev (emails de test uniquement)
+#   → Avec domaine vérifié : reservations@espace-kodoro.fr ou contact@espace-kodoro.fr
+#
+# En développement : laisser RESEND_API_KEY vide pour désactiver l'envoi.
+#
+
+RESEND_API_KEY=re_REMPLACEZ_PAR_VOTRE_CLE_RESEND
+EMAIL_FROM=Espace Ködörö <reservations@espace-kodoro.fr>

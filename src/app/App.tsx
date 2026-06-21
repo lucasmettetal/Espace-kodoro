@@ -16,6 +16,8 @@ import { OrganizerLogin } from './pages/OrganizerLogin';
 import { OrganizerDashboard } from './pages/OrganizerDashboard';
 import { OrganizerRegister } from './pages/OrganizerRegister';
 import { GamingPage } from './pages/GamingPage';
+import { ReservationGamingPage } from './pages/ReservationGamingPage';
+import { MerciReservationGamingPage } from './pages/MerciReservationGamingPage';
 import { YogaPage } from './pages/YogaPage';
 import { ActivitesPage } from './pages/ActivitesPage';
 
@@ -44,6 +46,8 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/activites" element={<ActivitesPage />} />
         <Route path="/gaming" element={<GamingPage />} />
+        <Route path="/reservation-gaming" element={<ReservationGamingPage />} />
+        <Route path="/merci-reservation-gaming" element={<MerciReservationGamingPage />} />
         <Route path="/yoga" element={<YogaPage />} />
         <Route path="/mentions-legales" element={<MentionsLegales />} />
         <Route path="/politique-de-confidentialite" element={<Confidentialite />} />
