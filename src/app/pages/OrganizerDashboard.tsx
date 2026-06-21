@@ -112,6 +112,10 @@ export function OrganizerDashboard() {
   const [tab, setTab] = useState<'events' | 'registrations' | 'reservations' | 'team' | 'organizers' | 'site'>('events');
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [reservationFilter, setReservationFilter] = useState<string>('all');
+  const [showManualForm, setShowManualForm] = useState(false);
+  const [manualForm, setManualForm] = useState({ customer_name: '', email: '', phone: '', quantity: 1, amount_cents: '', comment: '' });
+  const [manualParticipants, setManualParticipants] = useState<{ full_name: string; is_minor: boolean }[]>([{ full_name: '', is_minor: false }]);
+  const [manualSubmitting, setManualSubmitting] = useState(false);
   const [organizers, setOrganizers] = useState<{id: number, name: string, email: string, is_admin: number, created_at: string}[]>([]);
   const [teamForm, setTeamForm] = useState({ name: '', email: '', password: '' });
   const [teamError, setTeamError] = useState('');
@@ -211,6 +215,36 @@ export function OrganizerDashboard() {
         setReservations(data.reservations ?? []);
       }
     } catch { /* pas de backend en local */ }
+  }
+
+  async function submitManualReservation(e: React.FormEvent) {
+    e.preventDefault();
+    setManualSubmitting(true);
+    try {
+      const res = await fetch('/api/organizer/reservations', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...manualForm,
+          amount_cents: manualForm.amount_cents ? Math.round(parseFloat(manualForm.amount_cents) * 100) : null,
+          participants: manualParticipants.filter(p => p.full_name.trim()),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setShowManualForm(false);
+        setManualForm({ customer_name: '', email: '', phone: '', quantity: 1, amount_cents: '', comment: '' });
+        setManualParticipants([{ full_name: '', is_minor: false }]);
+        fetchReservations(reservationFilter);
+        alert('Réservation ajoutée et email envoyé !');
+      } else {
+        alert(data.error ?? 'Erreur lors de l\'ajout');
+      }
+    } catch {
+      alert('Erreur réseau');
+    } finally {
+      setManualSubmitting(false);
+    }
   }
 
   function logout() {
@@ -434,6 +468,12 @@ export function OrganizerDashboard() {
                 >
                   Actualiser
                 </button>
+                <button
+                  onClick={() => setShowManualForm(true)}
+                  style={{ background: '#C9A700', color: '#fff', border: 'none', padding: '0.45rem 1rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
+                >
+                  <Plus size={13} /> Ajouter manuellement
+                </button>
                 {reservations.length > 0 && (
                   <button
                     onClick={() => exportReservationsCSV(reservations, `reservations-gaming.csv`)}
@@ -546,6 +586,105 @@ export function OrganizerDashboard() {
               </div>
             )}
           </>
+        )}
+
+        {/* Modal ajout manuel de réservation */}
+        {showManualForm && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+            <div style={{ background: '#FBF7EF', width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', padding: '2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.3rem', fontWeight: 700, color: '#5F3636', margin: 0 }}>Ajouter une réservation</h2>
+                <button onClick={() => setShowManualForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#5F3636' }}><X size={20} /></button>
+              </div>
+              <form onSubmit={submitManualReservation} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+                {/* Réservant */}
+                <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C9A700', margin: 0 }}>Réservant</p>
+                {[
+                  { label: 'Nom complet *', key: 'customer_name', type: 'text', required: true },
+                  { label: 'Email *', key: 'email', type: 'email', required: true },
+                  { label: 'Téléphone', key: 'phone', type: 'tel', required: false },
+                ].map(({ label, key, type, required }) => (
+                  <div key={key}>
+                    <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', color: '#6B5D52', display: 'block', marginBottom: '0.25rem' }}>{label}</label>
+                    <input
+                      type={type}
+                      required={required}
+                      value={(manualForm as any)[key]}
+                      onChange={e => setManualForm(f => ({ ...f, [key]: e.target.value }))}
+                      style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid rgba(95,54,54,0.2)', background: '#fff', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#5F3636', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                ))}
+
+                {/* Réservation */}
+                <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C9A700', margin: '0.5rem 0 0' }}>Réservation</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', color: '#6B5D52', display: 'block', marginBottom: '0.25rem' }}>Nombre de places *</label>
+                    <input
+                      type="number" min={1} max={10} required
+                      value={manualForm.quantity}
+                      onChange={e => {
+                        const qty = parseInt(e.target.value) || 1;
+                        setManualForm(f => ({ ...f, quantity: qty }));
+                        setManualParticipants(Array.from({ length: qty }, (_, i) => manualParticipants[i] ?? { full_name: '', is_minor: false }));
+                      }}
+                      style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid rgba(95,54,54,0.2)', background: '#fff', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#5F3636', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', color: '#6B5D52', display: 'block', marginBottom: '0.25rem' }}>Montant encaissé (€)</label>
+                    <input
+                      type="number" step="0.01" min={0} placeholder="ex: 5.00"
+                      value={manualForm.amount_cents}
+                      onChange={e => setManualForm(f => ({ ...f, amount_cents: e.target.value }))}
+                      style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid rgba(95,54,54,0.2)', background: '#fff', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#5F3636', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Participants */}
+                <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C9A700', margin: '0.5rem 0 0' }}>Participants</p>
+                {manualParticipants.map((p, i) => (
+                  <div key={i} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      placeholder={`Participant ${i + 1}`}
+                      value={p.full_name}
+                      onChange={e => setManualParticipants(arr => arr.map((x, j) => j === i ? { ...x, full_name: e.target.value } : x))}
+                      style={{ flex: 1, padding: '0.6rem 0.75rem', border: '1px solid rgba(95,54,54,0.2)', background: '#fff', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#5F3636' }}
+                    />
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', color: '#6B5D52', whiteSpace: 'nowrap', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={p.is_minor} onChange={e => setManualParticipants(arr => arr.map((x, j) => j === i ? { ...x, is_minor: e.target.checked } : x))} />
+                      Mineur
+                    </label>
+                  </div>
+                ))}
+
+                {/* Commentaire */}
+                <div>
+                  <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', color: '#6B5D52', display: 'block', marginBottom: '0.25rem' }}>Commentaire (ex: payé en espèces, WhatsApp...)</label>
+                  <input
+                    type="text"
+                    value={manualForm.comment}
+                    onChange={e => setManualForm(f => ({ ...f, comment: e.target.value }))}
+                    style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid rgba(95,54,54,0.2)', background: '#fff', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#5F3636', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                  <button type="button" onClick={() => setShowManualForm(false)} style={{ background: 'none', border: '1px solid rgba(95,54,54,0.2)', color: '#6B5D52', padding: '0.6rem 1.25rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', cursor: 'pointer' }}>
+                    Annuler
+                  </button>
+                  <button type="submit" disabled={manualSubmitting} style={{ background: '#5F3636', color: '#F4EFE4', border: 'none', padding: '0.6rem 1.5rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', fontWeight: 600, cursor: manualSubmitting ? 'wait' : 'pointer', opacity: manualSubmitting ? 0.7 : 1 }}>
+                    {manualSubmitting ? 'Envoi...' : 'Ajouter + envoyer email'}
+                  </button>
+                </div>
+
+              </form>
+            </div>
+          </div>
         )}
 
         {/* Registrations tab */}
