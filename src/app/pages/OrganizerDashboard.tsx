@@ -133,32 +133,46 @@ export function OrganizerDashboard() {
   const [csvFileName, setCsvFileName] = useState('');
   const [csvImporting, setCsvImporting] = useState(false);
   const [csvResult, setCsvResult] = useState<{ imported: number; updated: number; errors: { email: string; reason: string }[] } | null>(null);
+  const [csvError, setCsvError] = useState('');
 
   function parseCsv(text: string) {
     const lines = text.trim().split(/\r?\n/);
-    if (lines.length < 2) return [];
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/["\s]/g, ''));
+    if (lines.length < 2) return null;
+
+    // Auto-détecter le séparateur : ; ou ,
+    const firstLine = lines[0];
+    const sep = firstLine.includes(';') ? ';' : ',';
+
+    const splitLine = (line: string) =>
+      line.split(sep).map(c => c.trim().replace(/^["']|["']$/g, ''));
+
+    const rawHeaders = splitLine(firstLine);
+    const headers = rawHeaders.map(h => h.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, ''));
+
     const COL: Record<string, string[]> = {
-      email:      ['email', 'e-mail', 'adresseemail', 'adressee-mail', 'courriel'],
-      first_name: ['firstname', 'prénom', 'prenom', 'first_name'],
-      last_name:  ['lastname', 'nom', 'nomdefamille', 'last_name'],
-      phone:      ['phone', 'telephone', 'téléphone', 'phonenumber', 'numérodetéléphone'],
+      email:      ['email', 'email', 'adresseemail', 'adressee-mail', 'courriel', 'emailaddress', 'emal'],
+      first_name: ['firstname', 'prenom', 'first_name', 'givenname', 'forename'],
+      last_name:  ['lastname', 'nom', 'last_name', 'nomdefamille', 'surname', 'familyname'],
+      phone:      ['phone', 'telephone', 'phonenumber', 'numerodeteleph', 'mobile', 'portable'],
     };
     const idx: Record<string, number> = {};
     for (const [field, aliases] of Object.entries(COL)) {
-      const found = headers.findIndex(h => aliases.includes(h));
+      const found = headers.findIndex(h => aliases.some(a => h.includes(a)));
       if (found !== -1) idx[field] = found;
     }
-    if (idx.email === undefined) return [];
-    return lines.slice(1).map(line => {
-      const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
-      return {
-        email:      cols[idx.email]      ?? '',
-        first_name: cols[idx.first_name] ?? '',
-        last_name:  cols[idx.last_name]  ?? '',
-        phone:      cols[idx.phone]      ?? '',
-      };
-    }).filter(r => r.email);
+    if (idx.email === undefined) return null;
+
+    return lines.slice(1)
+      .filter(l => l.trim())
+      .map(line => {
+        const cols = splitLine(line);
+        return {
+          email:      (cols[idx.email]      ?? '').toLowerCase().trim(),
+          first_name: cols[idx.first_name]  ?? '',
+          last_name:  cols[idx.last_name]   ?? '',
+          phone:      cols[idx.phone]        ?? '',
+        };
+      }).filter(r => r.email);
   }
 
   function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -166,10 +180,20 @@ export function OrganizerDashboard() {
     if (!file) return;
     setCsvFileName(file.name);
     setCsvResult(null);
+    setCsvError('');
+    setCsvParsed([]);
     const reader = new FileReader();
     reader.onload = ev => {
-      const parsed = parseCsv(ev.target?.result as string);
-      setCsvParsed(parsed);
+      const result = parseCsv(ev.target?.result as string);
+      if (result === null) {
+        setCsvError('Colonne "email" introuvable. Vérifie que le CSV contient bien une colonne email.');
+        return;
+      }
+      if (result.length === 0) {
+        setCsvError('Aucune ligne valide trouvée dans le fichier.');
+        return;
+      }
+      setCsvParsed(result);
     };
     reader.readAsText(file, 'UTF-8');
   }
@@ -1014,10 +1038,18 @@ export function OrganizerDashboard() {
                     </button>
                   )}
                 </div>
+                {csvError && (
+                  <div style={{ marginTop: '0.75rem', padding: '0.75rem 1rem', background: '#FBE9E7', borderLeft: '3px solid #C62828' }}>
+                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: '#C62828', margin: 0 }}>⚠ {csvError}</p>
+                    <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.7rem', color: '#9B8F89', margin: '0.4rem 0 0' }}>
+                      Colonnes attendues : email (ou e-mail, courriel), firstname (ou prénom), lastname (ou nom)
+                    </p>
+                  </div>
+                )}
                 {csvParsed.length > 0 && !csvResult && (
-                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#6B5D52', margin: '0.75rem 0 0' }}>
-                    {csvFileName} — {csvParsed.length} ligne{csvParsed.length > 1 ? 's' : ''} détectée{csvParsed.length > 1 ? 's' : ''} · colonnes : email
-                    {csvParsed[0]?.first_name !== undefined ? ', prénom' : ''}{csvParsed[0]?.last_name !== undefined ? ', nom' : ''}{csvParsed[0]?.phone !== undefined ? ', téléphone' : ''}
+                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#2E7D32', margin: '0.75rem 0 0' }}>
+                    ✓ {csvFileName} — {csvParsed.length} contact{csvParsed.length > 1 ? 's' : ''} prêt{csvParsed.length > 1 ? 's' : ''} à importer
+                    {csvParsed[0]?.first_name ? ' (avec prénom)' : ''}{csvParsed[0]?.last_name ? ' (avec nom)' : ''}
                   </p>
                 )}
                 {csvResult && (
