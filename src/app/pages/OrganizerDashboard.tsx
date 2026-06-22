@@ -203,7 +203,7 @@ export function OrganizerDashboard() {
     setCsvImporting(true);
     setCsvResult(null);
     try {
-      const res = await fetch('/api/organizer/contacts/import', {
+      const res = await fetch('/api/organizer/contacts-import', {
         method: 'POST',
         headers,
         body: JSON.stringify({ list_name: csvList, contacts: csvParsed }),
