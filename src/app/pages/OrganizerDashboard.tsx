@@ -127,6 +127,73 @@ export function OrganizerDashboard() {
   const [campaignSending, setCampaignSending] = useState(false);
   const [campaignPreviewCount, setCampaignPreviewCount] = useState<number | null>(null);
 
+  // ── Import CSV ─────────────────────────────────────────────────────────────
+  const [csvList, setCsvList] = useState('gaming');
+  const [csvParsed, setCsvParsed] = useState<{ email: string; first_name: string; last_name: string; phone: string }[]>([]);
+  const [csvFileName, setCsvFileName] = useState('');
+  const [csvImporting, setCsvImporting] = useState(false);
+  const [csvResult, setCsvResult] = useState<{ imported: number; updated: number; errors: { email: string; reason: string }[] } | null>(null);
+
+  function parseCsv(text: string) {
+    const lines = text.trim().split(/\r?\n/);
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/["\s]/g, ''));
+    const COL: Record<string, string[]> = {
+      email:      ['email', 'e-mail', 'adresseemail', 'adressee-mail', 'courriel'],
+      first_name: ['firstname', 'prénom', 'prenom', 'first_name'],
+      last_name:  ['lastname', 'nom', 'nomdefamille', 'last_name'],
+      phone:      ['phone', 'telephone', 'téléphone', 'phonenumber', 'numérodetéléphone'],
+    };
+    const idx: Record<string, number> = {};
+    for (const [field, aliases] of Object.entries(COL)) {
+      const found = headers.findIndex(h => aliases.includes(h));
+      if (found !== -1) idx[field] = found;
+    }
+    if (idx.email === undefined) return [];
+    return lines.slice(1).map(line => {
+      const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+      return {
+        email:      cols[idx.email]      ?? '',
+        first_name: cols[idx.first_name] ?? '',
+        last_name:  cols[idx.last_name]  ?? '',
+        phone:      cols[idx.phone]      ?? '',
+      };
+    }).filter(r => r.email);
+  }
+
+  function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCsvFileName(file.name);
+    setCsvResult(null);
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const parsed = parseCsv(ev.target?.result as string);
+      setCsvParsed(parsed);
+    };
+    reader.readAsText(file, 'UTF-8');
+  }
+
+  async function importCsv() {
+    if (csvParsed.length === 0) return;
+    setCsvImporting(true);
+    setCsvResult(null);
+    try {
+      const res = await fetch('/api/organizer/contacts/import', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ list_name: csvList, contacts: csvParsed }),
+      });
+      const data = await res.json();
+      setCsvResult(data);
+      fetchContactStats(csvList);
+    } catch {
+      setCsvResult({ imported: 0, updated: 0, errors: [{ email: '', reason: 'Erreur réseau' }] });
+    } finally {
+      setCsvImporting(false);
+    }
+  }
+
   const [organizers, setOrganizers] = useState<{id: number, name: string, email: string, is_admin: number, created_at: string}[]>([]);
   const [teamForm, setTeamForm] = useState({ name: '', email: '', password: '' });
   const [teamError, setTeamError] = useState('');
@@ -235,10 +302,22 @@ export function OrganizerDashboard() {
     } catch { /* pas de backend en local */ }
   }
 
+  type Contact = { id: number; email: string; first_name: string; last_name: string; phone: string; source: string; status: string; subscribed_at: string };
+  const [contactsList, setContactsList] = useState<Contact[]>([]);
+  const [contactsListName, setContactsListName] = useState('gaming');
+  const [showContactsList, setShowContactsList] = useState(false);
+
   async function fetchContactStats(listName: string) {
     try {
       const res = await fetch(`/api/organizer/contacts?list=${listName}`, { headers });
       if (res.ok) { const d = await res.json(); setCampaignStats(d.stats); }
+    } catch { /* */ }
+  }
+
+  async function fetchContactsList(listName: string) {
+    try {
+      const res = await fetch(`/api/organizer/contacts?list=${listName}`, { headers });
+      if (res.ok) { const d = await res.json(); setContactsList(d.contacts ?? []); setCampaignStats(d.stats); }
     } catch { /* */ }
   }
 
@@ -897,6 +976,132 @@ export function OrganizerDashboard() {
             <>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.4rem', fontWeight: 700, color: '#5F3636', margin: 0 }}>Campagnes email</h2>
+              </div>
+
+              {/* ── Import CSV ─────────────────────────────────────────────── */}
+              <div style={{ background: '#fff', border: '1px solid rgba(95,54,54,0.08)', padding: '1.25rem 1.5rem', marginBottom: '1.5rem' }}>
+                <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#C9A700', margin: '0 0 1rem' }}>Importer des contacts CSV</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end' }}>
+                  <div>
+                    <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#6B5D52', display: 'block', marginBottom: '0.3rem' }}>Liste cible</label>
+                    <select
+                      value={csvList}
+                      onChange={e => setCsvList(e.target.value)}
+                      style={{ padding: '0.55rem 0.75rem', border: '1px solid #EAE4D8', background: '#FDFAF5', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: '#5F3636' }}
+                    >
+                      <option value="gaming">Gaming</option>
+                      <option value="evenements">Événements</option>
+                      <option value="kodoro_general">Général Ködörö</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#6B5D52', display: 'block', marginBottom: '0.3rem' }}>Fichier CSV</label>
+                    <input
+                      type="file"
+                      accept=".csv,text/csv"
+                      onChange={handleCsvFile}
+                      style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: '#5F3636' }}
+                    />
+                  </div>
+                  {csvParsed.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={importCsv}
+                      disabled={csvImporting}
+                      style={{ background: csvImporting ? '#9B8F89' : '#5F3636', color: '#F4EFE4', border: 'none', padding: '0.6rem 1.25rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', fontWeight: 600, cursor: csvImporting ? 'wait' : 'pointer' }}
+                    >
+                      {csvImporting ? 'Import...' : `Importer ${csvParsed.length} contacts`}
+                    </button>
+                  )}
+                </div>
+                {csvParsed.length > 0 && !csvResult && (
+                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#6B5D52', margin: '0.75rem 0 0' }}>
+                    {csvFileName} — {csvParsed.length} ligne{csvParsed.length > 1 ? 's' : ''} détectée{csvParsed.length > 1 ? 's' : ''} · colonnes : email
+                    {csvParsed[0]?.first_name !== undefined ? ', prénom' : ''}{csvParsed[0]?.last_name !== undefined ? ', nom' : ''}{csvParsed[0]?.phone !== undefined ? ', téléphone' : ''}
+                  </p>
+                )}
+                {csvResult && (
+                  <div style={{ marginTop: '0.75rem', padding: '0.75rem 1rem', background: csvResult.errors.length === 0 ? '#E8F5E9' : '#FFF8E1', borderLeft: `3px solid ${csvResult.errors.length === 0 ? '#2E7D32' : '#C9A700'}` }}>
+                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: '#5F3636', margin: 0 }}>
+                      ✓ {csvResult.imported} nouveau{csvResult.imported > 1 ? 'x' : ''} · {csvResult.updated} mis à jour
+                      {csvResult.errors.length > 0 && ` · ${csvResult.errors.length} erreur${csvResult.errors.length > 1 ? 's' : ''}`}
+                    </p>
+                    {csvResult.errors.length > 0 && (
+                      <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.7rem', color: '#9B8F89', margin: '0.4rem 0 0' }}>
+                        {csvResult.errors.slice(0, 3).map(e => `${e.email}: ${e.reason}`).join(' · ')}
+                        {csvResult.errors.length > 3 ? ` +${csvResult.errors.length - 3} autres` : ''}
+                      </p>
+                    )}
+                  </div>
+                )}
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.72rem', color: '#9B8F89', margin: '0.5rem 0 0' }}>
+                  Colonnes reconnues : email (requis), firstname/prénom, lastname/nom, phone/téléphone
+                </p>
+              </div>
+
+              {/* ── Liste de contacts ──────────────────────────────────────── */}
+              <div style={{ background: '#fff', border: '1px solid rgba(95,54,54,0.08)', marginBottom: '1.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !showContactsList;
+                    setShowContactsList(next);
+                    if (next) fetchContactsList(contactsListName);
+                  }}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.5rem', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#C9A700' }}
+                >
+                  <span>Consulter la liste de contacts</span>
+                  <span style={{ fontSize: '1rem', color: '#9B8F89' }}>{showContactsList ? '▲' : '▼'}</span>
+                </button>
+                {showContactsList && (
+                  <div style={{ padding: '0 1.5rem 1.25rem' }}>
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem' }}>
+                      <select
+                        value={contactsListName}
+                        onChange={e => { setContactsListName(e.target.value); fetchContactsList(e.target.value); }}
+                        style={{ padding: '0.5rem 0.75rem', border: '1px solid #EAE4D8', background: '#FDFAF5', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: '#5F3636' }}
+                      >
+                        <option value="gaming">Gaming</option>
+                        <option value="evenements">Événements</option>
+                        <option value="kodoro_general">Général Ködörö</option>
+                      </select>
+                      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', color: '#9B8F89' }}>
+                        {contactsList.length} contact{contactsList.length > 1 ? 's' : ''} · {contactsList.filter(c => c.status === 'subscribed').length} abonné{contactsList.filter(c => c.status === 'subscribed').length > 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    {contactsList.length === 0 ? (
+                      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: '#9B8F89', margin: 0 }}>Aucun contact dans cette liste.</p>
+                    ) : (
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif", fontSize: '0.82rem' }}>
+                          <thead>
+                            <tr style={{ borderBottom: '2px solid #EAE4D8' }}>
+                              {['Prénom', 'Nom', 'Email', 'Téléphone', 'Statut', 'Ajouté le'].map(h => (
+                                <th key={h} style={{ textAlign: 'left', padding: '0.4rem 0.75rem', fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9B8F89', whiteSpace: 'nowrap' }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {contactsList.map(c => (
+                              <tr key={c.id} style={{ borderBottom: '1px solid #F4EFE4' }}>
+                                <td style={{ padding: '0.5rem 0.75rem', color: '#5F3636' }}>{c.first_name || '—'}</td>
+                                <td style={{ padding: '0.5rem 0.75rem', color: '#5F3636' }}>{c.last_name || '—'}</td>
+                                <td style={{ padding: '0.5rem 0.75rem', color: '#5F3636' }}>{c.email}</td>
+                                <td style={{ padding: '0.5rem 0.75rem', color: '#6B5D52' }}>{c.phone || '—'}</td>
+                                <td style={{ padding: '0.5rem 0.75rem' }}>
+                                  <span style={{ display: 'inline-block', padding: '0.15rem 0.5rem', background: c.status === 'subscribed' ? '#E8F5E9' : '#FBE9E7', color: c.status === 'subscribed' ? '#2E7D32' : '#C62828', fontSize: '0.72rem', fontFamily: "'DM Mono', monospace" }}>
+                                    {c.status === 'subscribed' ? 'abonné' : 'désabonné'}
+                                  </span>
+                                </td>
+                                <td style={{ padding: '0.5rem 0.75rem', color: '#9B8F89', whiteSpace: 'nowrap' }}>{new Date(c.subscribed_at).toLocaleDateString('fr-FR')}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 320px', gap: '1.5rem', alignItems: 'start' }}>
