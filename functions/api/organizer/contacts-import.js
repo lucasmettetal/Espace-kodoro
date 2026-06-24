@@ -6,8 +6,8 @@
 import { requireAuth } from '../_auth.js';
 
 export async function onRequestPost({ request, env }) {
-  const authError = await requireAuth(request, env);
-  if (authError) return authError;
+  const payload = await requireAuth(request, env);
+  if (!payload) return new Response(JSON.stringify({ error: 'Non autorisé' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
 
   let body;
   try {
