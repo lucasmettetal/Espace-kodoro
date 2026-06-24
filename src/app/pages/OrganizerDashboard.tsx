@@ -1059,16 +1059,32 @@ export function OrganizerDashboard() {
                   </p>
                 )}
                 {csvResult && (
-                  <div style={{ marginTop: '0.75rem', padding: '0.75rem 1rem', background: csvResult.errors.length === 0 ? '#E8F5E9' : '#FFF8E1', borderLeft: `3px solid ${csvResult.errors.length === 0 ? '#2E7D32' : '#C9A700'}` }}>
-                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: '#5F3636', margin: 0 }}>
-                      ✓ {csvResult.imported} nouveau{csvResult.imported > 1 ? 'x' : ''} · {csvResult.updated} mis à jour
-                      {csvResult.errors.length > 0 && ` · ${csvResult.errors.length} erreur${csvResult.errors.length > 1 ? 's' : ''}`}
-                    </p>
-                    {csvResult.errors.length > 0 && (
-                      <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.7rem', color: '#9B8F89', margin: '0.4rem 0 0' }}>
-                        {csvResult.errors.slice(0, 3).map(e => `${e.email}: ${e.reason}`).join(' · ')}
-                        {csvResult.errors.length > 3 ? ` +${csvResult.errors.length - 3} autres` : ''}
+                  <div style={{ marginTop: '0.75rem' }}>
+                    <div style={{ padding: '0.75rem 1rem', background: csvResult.errors.length === 0 ? '#E8F5E9' : '#FFF8E1', borderLeft: `3px solid ${csvResult.errors.length === 0 ? '#2E7D32' : '#C9A700'}` }}>
+                      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: '#5F3636', margin: 0 }}>
+                        ✓ {csvResult.imported} nouveau{csvResult.imported > 1 ? 'x' : ''} · {csvResult.updated} mis à jour
+                        {csvResult.errors.length > 0 && ` · ${csvResult.errors.length} ligne${csvResult.errors.length > 1 ? 's' : ''} ignorée${csvResult.errors.length > 1 ? 's' : ''}`}
                       </p>
+                    </div>
+                    {csvResult.errors.length > 0 && (
+                      <div style={{ marginTop: '0.5rem', border: '1px solid #EAE4D8', maxHeight: '180px', overflowY: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Mono', monospace", fontSize: '0.72rem' }}>
+                          <thead>
+                            <tr style={{ background: '#F4EFE4' }}>
+                              <th style={{ textAlign: 'left', padding: '0.35rem 0.75rem', color: '#9B8F89' }}>Email</th>
+                              <th style={{ textAlign: 'left', padding: '0.35rem 0.75rem', color: '#9B8F89' }}>Raison</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {csvResult.errors.map((e, i) => (
+                              <tr key={i} style={{ borderTop: '1px solid #EAE4D8' }}>
+                                <td style={{ padding: '0.35rem 0.75rem', color: '#C62828' }}>{e.email || '(vide)'}</td>
+                                <td style={{ padding: '0.35rem 0.75rem', color: '#6B5D52' }}>{e.reason}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     )}
                   </div>
                 )}
