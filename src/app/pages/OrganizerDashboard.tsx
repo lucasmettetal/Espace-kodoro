@@ -208,11 +208,17 @@ export function OrganizerDashboard() {
         headers,
         body: JSON.stringify({ list_name: csvList, contacts: csvParsed }),
       });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        setCsvResult({ imported: 0, updated: 0, errors: [{ email: '', reason: `Erreur ${res.status} — ${text.slice(0, 120)}` }] });
+        return;
+      }
       const data = await res.json();
       setCsvResult(data);
       fetchContactStats(csvList);
-    } catch {
-      setCsvResult({ imported: 0, updated: 0, errors: [{ email: '', reason: 'Erreur réseau' }] });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erreur inconnue';
+      setCsvResult({ imported: 0, updated: 0, errors: [{ email: '', reason: msg }] });
     } finally {
       setCsvImporting(false);
     }

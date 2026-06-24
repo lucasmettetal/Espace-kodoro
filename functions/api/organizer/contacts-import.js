@@ -3,7 +3,7 @@
 // Body: { list_name: string, contacts: [{ email, first_name?, last_name?, phone? }] }
 // Retourne: { imported: N, updated: N, errors: [{ email, reason }] }
 
-import { requireAuth } from '../../_auth.js';
+import { requireAuth } from '../_auth.js';
 
 export async function onRequestPost({ request, env }) {
   const authError = await requireAuth(request, env);
