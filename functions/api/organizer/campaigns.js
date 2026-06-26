@@ -13,6 +13,7 @@ const LIST_SENDERS = {
   evenements:     { email: 'evenements@espace-kodoro.fr', name: 'Espace Ködörö' },
   yoga:           { email: 'evenements@espace-kodoro.fr', name: 'Espace Ködörö' },
   kodoro_general: { email: 'evenements@espace-kodoro.fr', name: 'Espace Ködörö' },
+  reservations:   { email: 'gaming@espace-kodoro.fr',     name: 'Espace Ködörö Gaming' },
 };
 
 const UNSUB_LABELS = {
@@ -20,6 +21,7 @@ const UNSUB_LABELS = {
   evenements:     'événements Espace Ködörö',
   yoga:           'cours de yoga',
   kodoro_general: 'actualités Espace Ködörö',
+  reservations:   'soirées gaming',
 };
 
 export async function onRequestOptions() {
@@ -62,16 +64,29 @@ export async function onRequestPost({ request, env }) {
   const sender  = LIST_SENDERS[list_name] ?? LIST_SENDERS.gaming;
   const siteUrl = (env.SITE_URL ?? 'https://www.espace-kodoro.fr').replace(/\/$/, '');
 
-  // Récupérer les contacts abonnés
-  const { results: contacts } = await env.DB.prepare(`
-    SELECT c.id, c.email, c.first_name, cs.unsubscribe_token
-    FROM contacts c
-    JOIN contact_subscriptions cs ON cs.contact_id = c.id
-    WHERE cs.list_name = ? AND cs.status = 'subscribed'
-  `).bind(list_name).all();
+  // Récupérer les destinataires selon la liste
+  let contacts;
+  if (list_name === 'reservations') {
+    // Directement depuis la table reservations (tous les payés, sans opt-in requis)
+    const { results } = await env.DB.prepare(`
+      SELECT id, email, customer_name AS first_name, NULL AS unsubscribe_token
+      FROM reservations
+      WHERE status = 'paid'
+      GROUP BY email
+    `).all();
+    contacts = results;
+  } else {
+    const { results } = await env.DB.prepare(`
+      SELECT c.id, c.email, c.first_name, cs.unsubscribe_token
+      FROM contacts c
+      JOIN contact_subscriptions cs ON cs.contact_id = c.id
+      WHERE cs.list_name = ? AND cs.status = 'subscribed'
+    `).bind(list_name).all();
+    contacts = results;
+  }
 
   if (contacts.length === 0) {
-    return Response.json({ error: 'Aucun contact abonné à cette liste' }, { status: 400, headers: cors });
+    return Response.json({ error: 'Aucun destinataire trouvé pour cette liste' }, { status: 400, headers: cors });
   }
 
   // Mode preview — retourner le nombre de destinataires sans envoyer
@@ -88,14 +103,18 @@ export async function onRequestPost({ request, env }) {
   const campaignId = meta.last_row_id;
   const unsubLabel = UNSUB_LABELS[list_name] ?? 'nos communications';
 
-  // Construire le footer désinscription commun (lien personnalisé par contact)
+  // Construire le HTML final avec footer de désinscription
   function buildHtml(contact) {
-    const unsubLink = `${siteUrl}/api/unsubscribe?t=${encodeURIComponent(contact.unsubscribe_token)}&l=${encodeURIComponent(list_name)}`;
-    const footer = `
-      <div style="margin-top:2rem;padding-top:1rem;border-top:1px solid #eee;font-size:0.75rem;color:#999;font-family:Arial,sans-serif;text-align:center;">
-        Vous recevez cet email car vous êtes inscrit(e) aux ${unsubLabel} de l'Espace Ködörö.<br>
-        <a href="${unsubLink}" style="color:#999;">Se désinscrire</a>
-      </div>`;
+    let footer = '';
+    if (list_name !== 'reservations' && contact.unsubscribe_token) {
+      const unsubLink = `${siteUrl}/api/unsubscribe?t=${encodeURIComponent(contact.unsubscribe_token)}&l=${encodeURIComponent(list_name)}`;
+      footer = `
+        <div style="margin-top:2rem;padding-top:1rem;border-top:1px solid #eee;font-size:0.75rem;color:#999;font-family:Arial,sans-serif;text-align:center;">
+          Vous recevez cet email car vous êtes inscrit(e) aux ${unsubLabel} de l'Espace Ködörö.<br>
+          <a href="${unsubLink}" style="color:#999;">Se désinscrire</a>
+        </div>`;
+    }
+    if (!footer) return html_content;
     return html_content.includes('</body>')
       ? html_content.replace('</body>', `${footer}</body>`)
       : html_content + footer;

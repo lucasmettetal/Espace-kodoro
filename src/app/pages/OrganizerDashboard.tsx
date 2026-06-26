@@ -996,9 +996,10 @@ export function OrganizerDashboard() {
         {/* Campaigns tab */}
         {tab === 'campaigns' && (() => {
           const LIST_OPTIONS = [
-            { value: 'gaming',         label: 'Gaming',            sender: 'gaming@espace-kodoro.fr' },
-            { value: 'evenements',     label: 'Événements',        sender: 'evenements@espace-kodoro.fr' },
-            { value: 'kodoro_general', label: 'Général Ködörö',   sender: 'evenements@espace-kodoro.fr' },
+            { value: 'reservations',   label: 'Inscrits (réservations payées)', sender: 'gaming@espace-kodoro.fr' },
+            { value: 'gaming',         label: 'Gaming (opt-in)',                 sender: 'gaming@espace-kodoro.fr' },
+            { value: 'evenements',     label: 'Événements',                      sender: 'evenements@espace-kodoro.fr' },
+            { value: 'kodoro_general', label: 'Général Ködörö',                  sender: 'evenements@espace-kodoro.fr' },
           ];
           const currentList = LIST_OPTIONS.find(l => l.value === campaignForm.list_name) ?? LIST_OPTIONS[0];
 
@@ -1023,6 +1024,9 @@ export function OrganizerDashboard() {
                       <option value="evenements">Événements</option>
                       <option value="kodoro_general">Général Ködörö</option>
                     </select>
+                    <p style={{ margin: '0.25rem 0 0', fontFamily: "'DM Sans', sans-serif", fontSize: '0.72rem', color: '#9B8F89' }}>
+                      La liste "Inscrits" se remplit automatiquement via les réservations payées.
+                    </p>
                   </div>
                   <div>
                     <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#6B5D52', display: 'block', marginBottom: '0.3rem' }}>Fichier CSV</label>
