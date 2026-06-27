@@ -242,6 +242,12 @@ export function ReservationGamingPage() {
         return;
       }
 
+      // Première visite → réservation gratuite
+      if (data.first_visit) {
+        navigate('/merci-reservation-gaming?first_visit=1');
+        return;
+      }
+
       // Réservation couverte par un Pass Gaming actif → pas de paiement Stripe
       if (data.pass_reservation) {
         navigate('/merci-reservation-gaming?pass=1');
@@ -343,12 +349,26 @@ export function ReservationGamingPage() {
             </div>
           )}
 
+          {/* Bannière première soirée offerte */}
+          <div style={{ background: '#1a3d1a', border: '1px solid rgba(76,175,80,0.4)', padding: '1rem 1.25rem', marginBottom: '1.25rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: '1.2rem', flexShrink: 0, marginTop: '0.1rem' }}>🎮</span>
+            <div>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.95rem', fontWeight: 700, color: '#81C784', margin: '0 0 0.2rem' }}>
+                Première soirée ? Elle est offerte !
+              </p>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: 'rgba(129,199,132,0.8)', margin: 0, lineHeight: 1.65 }}>
+                Si c'est ta première visite, tu n'auras rien à payer — la vérification est automatique.
+                Viens voir l'ambiance, c'est sans engagement.
+              </p>
+            </div>
+          </div>
+
           {/* Introduction */}
           <div style={{ ...S.infoBox, marginBottom: '2rem' }}>
-            Merci de remplir ce formulaire avant de procéder au paiement.
+            Merci de remplir ce formulaire pour réserver ta place.
             Cela permet de préparer la liste des participants, d'anticiper le matériel et d'organiser la salle.
             <br />
-            <strong style={{ color: '#5F3636' }}>La réservation n'est confirmée qu'après réception du paiement.</strong>
+            <strong style={{ color: '#5F3636' }}>Première visite = offerte. Retour = 5 € par soirée.</strong>
           </div>
 
           {/* ── FORMULAIRE ────────────────────────────────────────────────── */}
@@ -601,11 +621,11 @@ export function ReservationGamingPage() {
                 onMouseEnter={e => { if (!submitting) e.currentTarget.style.background = '#D4B930'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = '#C9A700'; }}
               >
-                {submitting ? 'Redirection vers le paiement…' : `Continuer vers le paiement — ${total} €`}
+                {submitting ? 'Vérification en cours…' : 'Confirmer ma réservation'}
               </button>
 
               <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.06em', color: '#9B8F89', margin: 0 }}>
-                Vous serez redirigé vers Stripe pour le paiement sécurisé.
+                Première visite = gratuite. Retour = {total} € via Stripe.
               </p>
             </div>
           </form>

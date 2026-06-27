@@ -24,6 +24,60 @@ export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: cors });
 }
 
+// Email de confirmation pour une première visite gratuite
+async function sendFirstVisitEmail(env, { to, customerName, quantity, event }) {
+  if (!env.RESEND_API_KEY) return;
+  const siteUrl = (env.SITE_URL ?? 'https://www.espace-kodoro.fr').replace(/\/$/, '');
+  const from = env.EMAIL_FROM ?? 'Espace Ködörö <reservations@espace-kodoro.fr>';
+  const eventDate = event.event_date ?? event.date ?? '';
+  const horaire = (event.start_time && event.end_time) ? `${event.start_time} – ${event.end_time}` : '';
+  const location = event.location ?? 'Espace Ködörö — Caussade';
+
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"></head>
+  <body style="margin:0;padding:0;background:#f0ebe3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0ebe3;padding:32px 16px;">
+    <tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;">
+      <tr><td style="background:#3d1f1f;padding:28px 40px;text-align:center;">
+        <p style="margin:0 0 6px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.45);">Espace Ködörö · Caussade</p>
+        <p style="margin:0;font-size:20px;font-weight:700;color:#fff;">Bienvenue à ta première soirée ! 🎮</p>
+      </td></tr>
+      <tr><td style="background:#c9a700;height:3px;font-size:0;line-height:0;">&nbsp;</td></tr>
+      <tr><td style="padding:36px 40px;">
+        <p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.75;">Bonjour ${customerName},</p>
+        <p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.75;">Ta <strong>première soirée gaming</strong> est <strong style="color:#5f3636;">offerte</strong> — tu n'as rien à payer, ta place est réservée !</p>
+        <p style="margin:0 0 20px;color:#333;font-size:15px;line-height:1.75;">Viens voir l'ambiance, rencontrer la communauté, et si tu aimes, on espère te revoir !</p>
+        <table style="background:#fbf7ef;border:1px solid #e8e0d5;width:100%;margin-bottom:20px;" cellpadding="0" cellspacing="0">
+          <tr><td style="padding:16px 20px;">
+            <p style="margin:0 0 8px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#c9a700;">Détails</p>
+            <p style="margin:0 0 4px;font-size:14px;color:#5f3636;"><strong>Événement :</strong> ${event.title ?? 'Soirée Gaming'}</p>
+            ${eventDate ? `<p style="margin:0 0 4px;font-size:14px;color:#5f3636;"><strong>Date :</strong> ${eventDate}</p>` : ''}
+            ${horaire ? `<p style="margin:0 0 4px;font-size:14px;color:#5f3636;"><strong>Horaire :</strong> ${horaire}</p>` : ''}
+            <p style="margin:0 0 4px;font-size:14px;color:#5f3636;"><strong>Lieu :</strong> ${location}</p>
+            <p style="margin:0;font-size:14px;color:#5f3636;"><strong>Places :</strong> ${quantity}</p>
+          </td></tr>
+        </table>
+        <p style="margin:0;color:#333;font-size:15px;line-height:1.75;">À bientôt,<br><strong style="color:#5f3636;">Lucas — Espace Ködörö</strong></p>
+      </td></tr>
+      <tr><td style="background:#f7f3ed;padding:20px 40px;text-align:center;border-top:1px solid #e8e0d5;">
+        <p style="margin:0;font-size:12px;color:#999;">Espace Ködörö · 25 boulevard Didier Rey · 82300 Caussade</p>
+        <p style="margin:4px 0 0;font-size:12px;color:#999;"><a href="${siteUrl}" style="color:#999;">espace-kodoro.fr</a></p>
+      </td></tr>
+    </table></td></tr>
+  </table></body></html>`;
+
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from, to: [to], subject: 'Ta première soirée Gaming est offerte ! — Espace Ködörö', html }),
+    });
+    if (!res.ok) console.error('[create-checkout] Resend first_visit error:', res.status, await res.text());
+  } catch (err) {
+    console.error('[create-checkout] sendFirstVisitEmail:', err);
+  }
+}
+
 // Email de confirmation pour une réservation couverte par un Pass Gaming
 async function sendPassReservationEmail(env, { to, customerName, quantity, event, passExpiresAt }) {
   if (!env.RESEND_API_KEY) return;
@@ -176,6 +230,55 @@ export async function onRequestPost({ request, env }) {
     `).bind(normalizedEmail).first();
   } catch (err) {
     console.error('[create-checkout] check pass:', err);
+  }
+
+  // ── 4ter. Première visite ? → réservation gratuite ──────────────────────
+  if (!activePass) {
+    const priorVisit = await env.DB.prepare(
+      `SELECT id FROM reservations WHERE email = ? AND status = 'paid' LIMIT 1`
+    ).bind(normalizedEmail).first();
+
+    if (!priorVisit) {
+      let firstVisitReservationId;
+      try {
+        const result = await env.DB.prepare(`
+          INSERT INTO reservations
+            (event_id, customer_name, email, phone, quantity, status,
+             amount_cents, utm_source, utm_medium, utm_campaign,
+             utm_content, utm_term, referrer, landing_page, comment,
+             newsletter_consent, payment_type)
+          VALUES (?, ?, ?, ?, ?, 'paid', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'first_visit')
+        `).bind(
+          event_id, customer_name.trim(), normalizedEmail, phone.trim(), qty,
+          utm_source ?? null, utm_medium ?? null, utm_campaign ?? null,
+          utm_content ?? null, utm_term ?? null, referrer ?? null, landing_page ?? null,
+          comment?.trim() || null, newsletter_consent ? 1 : 0,
+        ).run();
+        firstVisitReservationId = result.meta.last_row_id;
+      } catch (err) {
+        console.error('[create-checkout] DB insert first_visit reservation:', err);
+        return Response.json({ error: 'Erreur lors de la création de la réservation' }, { status: 500, headers: cors });
+      }
+
+      if (participants.length > 0) {
+        const stmts = participants.filter(p => p?.full_name?.trim()).map(p =>
+          env.DB.prepare('INSERT INTO participants (reservation_id, full_name, is_minor, age) VALUES (?, ?, ?, ?)')
+            .bind(firstVisitReservationId, p.full_name.trim(), p.is_minor ? 1 : 0, (p.is_minor && p.age) ? parseInt(p.age, 10) : null)
+        );
+        if (stmts.length > 0) await env.DB.batch(stmts);
+      }
+
+      if (equipment.length > 0) {
+        const stmts = equipment.filter(e => typeof e === 'string' && e.trim()).map(e =>
+          env.DB.prepare('INSERT INTO equipment_offers (reservation_id, equipment_type) VALUES (?, ?)').bind(firstVisitReservationId, e.trim())
+        );
+        if (stmts.length > 0) await env.DB.batch(stmts);
+      }
+
+      await sendFirstVisitEmail(env, { to: normalizedEmail, customerName: customer_name.trim(), quantity: qty, event });
+
+      return Response.json({ first_visit: true, reservation_id: firstVisitReservationId }, { headers: cors });
+    }
   }
 
   if (activePass) {

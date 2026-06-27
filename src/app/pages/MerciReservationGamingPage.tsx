@@ -25,6 +25,7 @@ export function MerciReservationGamingPage() {
   const [cfg, setCfg] = useState<SiteConfig>({ gaming_whatsapp_link: '' });
   const [searchParams] = useSearchParams();
   const isPass = searchParams.get('pass') === '1';
+  const isFirstVisit = searchParams.get('first_visit') === '1';
 
   // Charger la config pour récupérer le lien WhatsApp dynamique
   useEffect(() => {
@@ -71,18 +72,23 @@ export function MerciReservationGamingPage() {
           </div>
 
           <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.7rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#C9A700', marginBottom: '1rem' }}>
-            {isPass ? 'Réservation enregistrée' : 'Paiement reçu'}
+            {isFirstVisit ? 'Première soirée offerte' : isPass ? 'Réservation enregistrée' : 'Paiement reçu'}
           </p>
 
           <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 'clamp(1.75rem, 4vw, 3rem)', fontWeight: 700, lineHeight: 1.2, color: '#F4EFE4', margin: 0, marginBottom: '1.5rem' }}>
-            Merci pour votre{' '}
-            <em style={{ fontStyle: 'italic', color: '#C9A700' }}>réservation</em> !
+            {isFirstVisit ? (
+              <>Bienvenue à ta{' '}<em style={{ fontStyle: 'italic', color: '#C9A700' }}>première soirée</em> !</>
+            ) : (
+              <>Merci pour votre{' '}<em style={{ fontStyle: 'italic', color: '#C9A700' }}>réservation</em> !</>
+            )}
           </h1>
 
           <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 'clamp(0.95rem, 1.6vw, 1.05rem)', lineHeight: 1.85, color: 'rgba(244,239,228,0.8)', maxWidth: 580, margin: '0 auto 2rem' }}>
-            {isPass
-              ? 'Votre place est réservée grâce à votre Pass Gaming — aucun paiement supplémentaire n\'est nécessaire pour cette soirée. Vous recevrez les informations utiles avant la soirée.'
-              : 'Votre paiement a bien été reçu. Votre place sera enregistrée après validation finale du paiement. Vous recevrez les informations utiles avant la soirée.'}
+            {isFirstVisit
+              ? "Ta première soirée est offerte — ta place est réservée, rien à payer. Viens voir l'ambiance, rencontrer la communauté, et si tu aimes, on espère te revoir !"
+              : isPass
+              ? "Votre place est réservée grâce à votre Pass Gaming — aucun paiement supplémentaire n'est nécessaire pour cette soirée. Vous recevrez les informations utiles avant la soirée."
+              : "Votre paiement a bien été reçu. Votre place sera enregistrée après validation finale du paiement. Vous recevrez les informations utiles avant la soirée."}
           </p>
 
           {/* Rappel de l'événement */}

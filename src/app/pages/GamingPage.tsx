@@ -109,9 +109,15 @@ export function GamingPage() {
             Soirées <em style={{ fontStyle: 'italic', color: '#C9A700' }}>Gaming</em>
             <br />à Caussade
           </h1>
-          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 'clamp(1rem, 1.8vw, 1.15rem)', lineHeight: 1.75, color: 'rgba(244,239,228,0.75)', maxWidth: 600, marginBottom: '2.5rem' }}>
+          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 'clamp(1rem, 1.8vw, 1.15rem)', lineHeight: 1.75, color: 'rgba(244,239,228,0.75)', maxWidth: 600, marginBottom: '1.25rem' }}>
             Un rendez-vous pour jouer, rencontrer d'autres joueurs et construire une communauté gaming locale.
           </p>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(76,175,80,0.15)', border: '1px solid rgba(76,175,80,0.35)', padding: '0.4rem 0.875rem', marginBottom: '2rem' }}>
+            <span style={{ color: '#81C784', fontSize: '0.9rem' }}>●</span>
+            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: '#81C784', fontWeight: 500 }}>
+              Première soirée offerte — viens voir sans payer
+            </span>
+          </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
             <Link
               to={reservationHref}
