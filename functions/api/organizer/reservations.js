@@ -200,6 +200,7 @@ export async function onRequestPost({ request, env }) {
         headers: { 'Authorization': `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           from,
+          reply_to: env.EMAIL_REPLY_TO ?? 'espacekodoro@gmail.com',
           to: [email],
           subject: `Réservation confirmée — Soirée Gaming du 26 juin · Espace Ködörö`,
           html,

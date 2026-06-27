@@ -178,6 +178,7 @@ async function sendConfirmationEmail({ env, to, customerName, reservation, parti
     },
     body: JSON.stringify({
       from,
+      reply_to: env.EMAIL_REPLY_TO ?? 'espacekodoro@gmail.com',
       to:      [to],
       subject: `Réservation confirmée — Soirée Gaming du 26 juin · Espace Ködörö`,
       html,
@@ -234,7 +235,7 @@ async function sendPassConfirmationEmail(env, { to, customerName, expiresAt }) {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, to: [to], subject: 'Votre Pass Gaming est actif 🎮', html }),
+      body: JSON.stringify({ from, reply_to: env.EMAIL_REPLY_TO ?? 'espacekodoro@gmail.com', to: [to], subject: 'Votre Pass Gaming est actif 🎮', html }),
     });
     if (!res.ok) {
       const err = await res.text();

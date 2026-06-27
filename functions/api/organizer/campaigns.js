@@ -149,7 +149,7 @@ export async function onRequestPost({ request, env }) {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: `${sender.name} <${sender.email}>`, to: [test_email], subject: `[TEST] ${subject}`, html }),
+      body: JSON.stringify({ from: `${sender.name} <${sender.email}>`, reply_to: env.EMAIL_REPLY_TO ?? 'espacekodoro@gmail.com', to: [test_email], subject: `[TEST] ${subject}`, html }),
     });
     if (res.ok) {
       return Response.json({ test: true, sent_to: test_email }, { headers: cors });
@@ -206,11 +206,13 @@ export async function onRequestPost({ request, env }) {
   for (let i = 0; i < contacts.length; i += BATCH_SIZE) {
     const batch = contacts.slice(i, i + BATCH_SIZE);
 
+    const replyTo = env.EMAIL_REPLY_TO ?? 'espacekodoro@gmail.com';
     const payload_batch = batch.map(c => ({
-      from:    `${sender.name} <${sender.email}>`,
-      to:      [c.email],
+      from:     `${sender.name} <${sender.email}>`,
+      reply_to: replyTo,
+      to:       [c.email],
       subject,
-      html:    buildHtml(c),
+      html:     buildHtml(c),
     }));
 
     try {

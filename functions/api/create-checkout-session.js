@@ -70,7 +70,7 @@ async function sendFirstVisitEmail(env, { to, customerName, quantity, event }) {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, to: [to], subject: 'Ta première soirée Gaming est offerte ! — Espace Ködörö', html }),
+      body: JSON.stringify({ from, reply_to: env.EMAIL_REPLY_TO ?? 'espacekodoro@gmail.com', to: [to], subject: 'Ta première soirée Gaming est offerte ! — Espace Ködörö', html }),
     });
     if (!res.ok) console.error('[create-checkout] Resend first_visit error:', res.status, await res.text());
   } catch (err) {
@@ -127,7 +127,7 @@ async function sendPassReservationEmail(env, { to, customerName, quantity, event
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, to: [to], subject: 'Réservation confirmée — Soirée Gaming · Espace Ködörö', html }),
+      body: JSON.stringify({ from, reply_to: env.EMAIL_REPLY_TO ?? 'espacekodoro@gmail.com', to: [to], subject: 'Réservation confirmée — Soirée Gaming · Espace Ködörö', html }),
     });
     if (!res.ok) {
       const err = await res.text();
