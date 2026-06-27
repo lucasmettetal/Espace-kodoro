@@ -26,39 +26,66 @@ const UNSUB_LABELS = {
 
 // ── Template email branded ────────────────────────────────────────────────────
 function wrapInTemplate({ content, subject, siteUrl, unsubHtml }) {
-  // Convertit le texte brut (sauts de ligne) en paragraphes HTML si nécessaire
-  const body = content.includes('<') ? content
-    : content.split(/\n{2,}/).map(p => `<p style="margin:0 0 1rem;color:#6B5D52;font-size:0.95rem;line-height:1.75;">${p.replace(/\n/g, '<br>')}</p>`).join('');
+  // Convertit le texte brut en HTML propre si pas de balises
+  const body = content.includes('<')
+    ? content
+    : content
+        .split(/\n{2,}/)
+        .map(block => {
+          const trimmed = block.trim();
+          if (!trimmed) return '';
+          // Détecter les listes numérotées (1. texte)
+          if (/^\d+\.\s/.test(trimmed)) {
+            const items = trimmed.split(/\n/).filter(l => l.trim());
+            return `<ol style="margin:0 0 1.25rem;padding-left:1.5rem;">${items.map(li => `<li style="margin-bottom:0.4rem;color:#333;font-size:15px;line-height:1.7;">${li.replace(/^\d+\.\s*/, '')}</li>`).join('')}</ol>`;
+          }
+          // Détecter les listes à tirets
+          if (/^[-•]\s/.test(trimmed)) {
+            const items = trimmed.split(/\n/).filter(l => l.trim());
+            return `<ul style="margin:0 0 1.25rem;padding-left:1.5rem;">${items.map(li => `<li style="margin-bottom:0.4rem;color:#333;font-size:15px;line-height:1.7;">${li.replace(/^[-•]\s*/, '')}</li>`).join('')}</ul>`;
+          }
+          return `<p style="margin:0 0 1.25rem;color:#333;font-size:15px;line-height:1.75;">${trimmed.replace(/\n/g, '<br>')}</p>`;
+        })
+        .join('');
 
   return `<!DOCTYPE html>
 <html lang="fr">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${subject}</title></head>
-<body style="margin:0;padding:0;background:#F4EFE4;font-family:'Helvetica Neue',Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F4EFE4;padding:2rem 1rem;">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${subject}</title>
+</head>
+<body style="margin:0;padding:0;background:#f0ebe3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#f0ebe3;padding:32px 16px;">
     <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border:1px solid rgba(95,54,54,0.12);">
+      <table width="600" cellpadding="0" cellspacing="0" role="presentation" style="max-width:600px;width:100%;">
 
+        <!-- Header -->
         <tr>
-          <td style="background:#5F3636;padding:1.5rem 2rem;text-align:center;">
-            <p style="margin:0 0 0.2rem;font-size:0.65rem;letter-spacing:0.14em;text-transform:uppercase;color:rgba(244,239,228,0.55);">Espace Ködörö · Caussade</p>
-            <p style="margin:0;font-size:1.1rem;font-weight:700;color:#F4EFE4;letter-spacing:-0.01em;">${subject}</p>
+          <td style="background:#3d1f1f;padding:28px 40px;text-align:center;border-radius:4px 4px 0 0;">
+            <p style="margin:0 0 6px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.45);font-weight:500;">Espace Ködörö · Caussade</p>
+            <p style="margin:0;font-size:20px;font-weight:700;color:#ffffff;line-height:1.3;">${subject.replace(/^\[TEST\]\s*/, '')}</p>
           </td>
         </tr>
 
+        <!-- Accent bar -->
+        <tr><td style="background:#c9a700;height:3px;font-size:0;line-height:0;">&nbsp;</td></tr>
+
+        <!-- Body -->
         <tr>
-          <td style="padding:2rem;">
+          <td style="background:#ffffff;padding:36px 40px 28px;">
             ${body}
           </td>
         </tr>
 
+        <!-- Footer -->
         <tr>
-          <td style="background:#F4EFE4;padding:1.25rem 2rem;text-align:center;border-top:1px solid rgba(95,54,54,0.08);">
-            <p style="margin:0 0 0.5rem;font-size:0.7rem;color:#9B8F89;">
+          <td style="background:#f7f3ed;padding:20px 40px;text-align:center;border-top:1px solid #e8e0d5;border-radius:0 0 4px 4px;">
+            <p style="margin:0 0 4px;font-size:12px;color:#999;line-height:1.5;">
               Espace Ködörö · 25 boulevard Didier Rey · 82300 Caussade
             </p>
-            <p style="margin:0;font-size:0.7rem;color:#9B8F89;">
-              <a href="${siteUrl}" style="color:#9B8F89;text-decoration:none;">espace-kodoro.fr</a>
+            <p style="margin:0;font-size:12px;color:#999;">
+              <a href="${siteUrl}" style="color:#999;text-decoration:underline;">espace-kodoro.fr</a>
             </p>
             ${unsubHtml}
           </td>
@@ -117,7 +144,7 @@ export async function onRequestPost({ request, env }) {
       content: html_content,
       subject: `[TEST] ${subject}`,
       siteUrl,
-      unsubHtml: `<p style="margin:0.5rem 0 0;font-size:0.7rem;color:#9B8F89;">— Ceci est un email de test —</p>`,
+      unsubHtml: `<p style="margin:12px 0 0;font-size:11px;color:#bbb;">— Ceci est un email de test —</p>`,
     });
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -175,9 +202,9 @@ export async function onRequestPost({ request, env }) {
     let unsubHtml = '';
     if (list_name !== 'reservations' && contact.unsubscribe_token) {
       const unsubLink = `${siteUrl}/api/unsubscribe?t=${encodeURIComponent(contact.unsubscribe_token)}&l=${encodeURIComponent(list_name)}`;
-      unsubHtml = `<p style="margin:0.5rem 0 0;font-size:0.7rem;color:#9B8F89;">
-        Vous recevez cet email car vous êtes inscrit(e) aux ${unsubLabel} de l'Espace Ködörö. ·
-        <a href="${unsubLink}" style="color:#9B8F89;">Se désinscrire</a>
+      unsubHtml = `<p style="margin:12px 0 0;font-size:11px;color:#bbb;line-height:1.5;">
+        Vous recevez cet email car vous êtes inscrit(e) aux ${unsubLabel} de l'Espace Ködörö.<br>
+        <a href="${unsubLink}" style="color:#bbb;text-decoration:underline;">Se désinscrire</a>
       </p>`;
     }
     return wrapInTemplate({ content: html_content, subject, siteUrl, unsubHtml });
