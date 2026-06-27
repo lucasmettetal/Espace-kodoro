@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { LogOut, Plus, Users, Calendar, X, Pencil, Trash2, Download, UserPlus, Settings, ChevronDown, ChevronUp, Mail, Send } from 'lucide-react';
+import { LogOut, Plus, Users, Calendar, X, Pencil, Trash2, Download, UserPlus, Settings, ChevronDown, ChevronUp, Mail, Send, CreditCard, Bell } from 'lucide-react';
 
 type Event = {
   id: number;
@@ -46,6 +46,14 @@ type Reservation = {
   minor_count: number;
   equipment: string;
 };
+
+type Pass = {
+  id: number; contact_id: number; pass_type: string; status: string;
+  starts_at: string; expires_at: string; days_remaining: number;
+  email: string; first_name: string; last_name: string; phone: string;
+  payment_provider: string; amount: number; paid_at: string; notes: string;
+};
+type PassStats = { active: number; expired: number; expiring_7: number; expiring_30: number; revenue_stripe_month: number; revenue_cash_month: number };
 
 const emptyForm = { title: '', date: '', day: '', year: new Date().getFullYear().toString(), type: 'Soirée', description: '', price: '', spots_total: '0' };
 
@@ -109,7 +117,14 @@ export function OrganizerDashboard() {
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<'events' | 'registrations' | 'reservations' | 'campaigns' | 'team' | 'organizers' | 'site'>('events');
+  const [tab, setTab] = useState<'events' | 'registrations' | 'reservations' | 'campaigns' | 'passes' | 'team' | 'organizers' | 'site'>('events');
+  const [passes, setPasses] = useState<Pass[]>([]);
+  const [passStats, setPassStats] = useState<PassStats | null>(null);
+  const [passFilter, setPassFilter] = useState<'all' | 'active' | 'expired' | 'expiring'>('active');
+  const [showPassForm, setShowPassForm] = useState(false);
+  const [passForm, setPassForm] = useState({ first_name: '', last_name: '', email: '', phone: '', starts_at: new Date().toISOString().slice(0, 10), notes: '', send_email: true });
+  const [passSaving, setPassSaving] = useState(false);
+  const [passReminderSending, setPassReminderSending] = useState<number | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [reservationFilter, setReservationFilter] = useState<string>('all');
   const [showManualForm, setShowManualForm] = useState(false);
@@ -361,6 +376,45 @@ export function OrganizerDashboard() {
       const res = await fetch('/api/organizer/campaigns', { headers });
       if (res.ok) { const d = await res.json(); setCampaigns(d.campaigns ?? []); }
     } catch { /* pas de backend en local */ }
+  }
+
+  async function fetchPasses() {
+    try {
+      const res = await fetch('/api/organizer/passes', { headers });
+      if (res.ok) { const d = await res.json(); setPasses(d.passes ?? []); setPassStats(d.stats ?? null); }
+    } catch { /* pas de backend en local */ }
+  }
+
+  async function createPass() {
+    setPassSaving(true);
+    try {
+      const res = await fetch('/api/organizer/passes', { method: 'POST', headers, body: JSON.stringify(passForm) });
+      const d = await res.json();
+      if (res.ok) {
+        setShowPassForm(false);
+        setPassForm({ first_name: '', last_name: '', email: '', phone: '', starts_at: new Date().toISOString().slice(0, 10), notes: '', send_email: true });
+        fetchPasses();
+      } else alert(d.error ?? 'Erreur');
+    } catch { alert('Erreur réseau'); }
+    finally { setPassSaving(false); }
+  }
+
+  async function cancelPass(id: number) {
+    if (!confirm('Annuler ce pass ?')) return;
+    try {
+      await fetch(`/api/organizer/passes/${id}`, { method: 'DELETE', headers });
+      fetchPasses();
+    } catch { alert('Erreur réseau'); }
+  }
+
+  async function sendReminder(id: number) {
+    setPassReminderSending(id);
+    try {
+      const res = await fetch(`/api/organizer/passes/${id}/remind`, { method: 'POST', headers });
+      const d = await res.json();
+      alert(res.ok ? '✓ Rappel envoyé' : (d.error ?? 'Erreur'));
+    } catch { alert('Erreur réseau'); }
+    finally { setPassReminderSending(null); }
   }
 
   type Contact = { id: number; email: string; first_name: string; last_name: string; phone: string; source: string; status: string; subscribed_at: string };
@@ -655,13 +709,14 @@ export function OrganizerDashboard() {
             { key: 'registrations', label: 'Inscriptions', icon: Users },
             { key: 'reservations', label: 'Réservations', icon: Calendar },
             { key: 'campaigns', label: 'Campagnes email', icon: Send },
+            { key: 'passes', label: 'Pass Gaming', icon: CreditCard },
             { key: 'site', label: 'Site', icon: Settings },
             { key: 'team', label: 'Équipe', icon: UserPlus },
             ...(isAdmin ? [{ key: 'organizers', label: 'Organisateurs', icon: Users }] : []),
           ].map(({ key, label, icon: Icon }) => (
             <button
               key={key}
-              onClick={() => { setTab(key as any); if (key === 'reservations') fetchReservations(); if (key === 'campaigns') { fetchCampaigns(); fetchContactStats('gaming'); fetchCampaignPageStats(); } }}
+              onClick={() => { setTab(key as any); if (key === 'reservations') fetchReservations(); if (key === 'passes') fetchPasses(); if (key === 'campaigns') { fetchCampaigns(); fetchContactStats('gaming'); fetchCampaignPageStats(); } }}
               className="dk-tab-btn"
               style={{ background: tab === key ? '#5F3636' : '#EAE4D8', color: tab === key ? '#F4EFE4' : '#5F3636' }}
             >
@@ -1692,6 +1747,184 @@ export function OrganizerDashboard() {
             </div>
           </>
         )}
+        {/* Pass Gaming tab */}
+        {tab === 'passes' && (() => {
+          const now = Date.now();
+          const filtered = passes.filter(p => {
+            const expired = p.status === 'expired' || (p.status === 'active' && new Date(p.expires_at).getTime() < now);
+            if (passFilter === 'all') return true;
+            if (passFilter === 'active') return p.status === 'active' && !expired;
+            if (passFilter === 'expired') return expired || p.status === 'cancelled';
+            if (passFilter === 'expiring') return p.status === 'active' && !expired && p.days_remaining <= 7;
+            return true;
+          });
+          const statusInfo = (p: Pass) => {
+            if (p.status === 'cancelled') return { label: 'Annulé', bg: 'rgba(158,158,158,0.15)', color: '#616161' };
+            const expired = p.status === 'expired' || new Date(p.expires_at).getTime() < now;
+            if (expired) return { label: 'Expiré', bg: 'rgba(192,50,50,0.12)', color: '#c03232' };
+            if (p.days_remaining <= 7) return { label: `${p.days_remaining}j restants`, bg: 'rgba(255,152,0,0.12)', color: '#E65100' };
+            return { label: 'Actif', bg: 'rgba(76,175,80,0.12)', color: '#2E7D32' };
+          };
+          const fmtDate = (s: string) => s ? new Date(s.includes('T') ? s : s.replace(' ', 'T')).toLocaleDateString('fr-FR') : '—';
+          const cards = [
+            { label: 'Pass actifs', value: passStats?.active ?? 0, color: '#2E7D32' },
+            { label: 'Expirent dans 7j', value: passStats?.expiring_7 ?? 0, color: '#E65100' },
+            { label: 'Expirent dans 30j', value: passStats?.expiring_30 ?? 0, color: '#C9A700' },
+            { label: 'Expirés', value: passStats?.expired ?? 0, color: '#c03232' },
+          ];
+          return (
+            <>
+              <div className="dk-section-header">
+                <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.5rem', fontWeight: 700, color: '#5F3636', margin: 0 }}>
+                  Pass Gaming ({passes.length})
+                </h2>
+                <button
+                  onClick={() => setShowPassForm(v => !v)}
+                  style={{ background: '#C9A700', color: '#F4EFE4', border: 'none', padding: '0.6rem 1.25rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}
+                >
+                  <Plus size={15} /> Nouveau pass manuel
+                </button>
+              </div>
+
+              {/* Vue rapide */}
+              <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', marginBottom: '1.5rem' }}>
+                {cards.map(c => (
+                  <div key={c.label} style={{ background: '#fff', border: '1px solid rgba(95,54,54,0.12)', padding: '1.25rem' }}>
+                    <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#6B5D52', margin: 0, marginBottom: '0.5rem' }}>{c.label}</p>
+                    <p style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2rem', fontWeight: 700, color: c.color, margin: 0 }}>{c.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Revenus du mois */}
+              {passStats && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '1.5rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: '#6B5D52' }}>
+                  <span>Revenus Stripe (mois) : <strong style={{ color: '#5F3636' }}>{((passStats.revenue_stripe_month ?? 0) / 100).toFixed(2)} €</strong></span>
+                  <span>Revenus liquide (mois) : <strong style={{ color: '#5F3636' }}>{((passStats.revenue_cash_month ?? 0) / 100).toFixed(2)} €</strong></span>
+                </div>
+              )}
+
+              {/* Formulaire de création */}
+              {showPassForm && (
+                <div style={{ background: '#fff', border: '1px solid rgba(95,54,54,0.12)', padding: '1.5rem', marginBottom: '1.5rem' }}>
+                  <h3 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.1rem', fontWeight: 700, color: '#5F3636', margin: 0, marginBottom: '1rem' }}>Nouveau pass (paiement liquide)</h3>
+                  <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginBottom: '1rem' }}>
+                    {[
+                      { key: 'first_name', label: 'Prénom *', type: 'text' },
+                      { key: 'last_name', label: 'Nom *', type: 'text' },
+                      { key: 'email', label: 'Email *', type: 'email' },
+                      { key: 'phone', label: 'Téléphone', type: 'tel' },
+                      { key: 'starts_at', label: 'Date de début', type: 'date' },
+                    ].map(f => (
+                      <div key={f.key}>
+                        <label style={{ display: 'block', fontFamily: "'DM Mono', monospace", fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#6B5D52', marginBottom: '0.35rem' }}>{f.label}</label>
+                        <input
+                          type={f.type}
+                          value={(passForm as any)[f.key]}
+                          onChange={e => setPassForm(p => ({ ...p, [f.key]: e.target.value }))}
+                          style={{ width: '100%', boxSizing: 'border-box', background: '#FBF7EF', border: '1px solid rgba(95,54,54,0.2)', padding: '0.6rem 0.875rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#5F3636', outline: 'none' }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', fontFamily: "'DM Mono', monospace", fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#6B5D52', marginBottom: '0.35rem' }}>Note admin</label>
+                    <textarea
+                      rows={2}
+                      value={passForm.notes}
+                      onChange={e => setPassForm(p => ({ ...p, notes: e.target.value }))}
+                      style={{ width: '100%', boxSizing: 'border-box', background: '#FBF7EF', border: '1px solid rgba(95,54,54,0.2)', padding: '0.6rem 0.875rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#5F3636', outline: 'none', resize: 'vertical' }}
+                    />
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: '#5F3636', marginBottom: '1rem' }}>
+                    <input type="checkbox" checked={passForm.send_email} onChange={e => setPassForm(p => ({ ...p, send_email: e.target.checked }))} style={{ accentColor: '#C9A700', width: 15, height: 15 }} />
+                    Envoyer un email de confirmation
+                  </label>
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <button onClick={() => setShowPassForm(false)} style={{ background: '#EAE4D8', color: '#5F3636', border: 'none', padding: '0.6rem 1.25rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', cursor: 'pointer' }}>Annuler</button>
+                    <button onClick={createPass} disabled={passSaving} style={{ background: '#C9A700', color: '#F4EFE4', border: 'none', padding: '0.6rem 1.25rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', fontWeight: 500, cursor: passSaving ? 'not-allowed' : 'pointer', opacity: passSaving ? 0.7 : 1 }}>{passSaving ? 'Création…' : 'Créer le pass'}</button>
+                  </div>
+                </div>
+              )}
+
+              {/* Filtres */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+                {([
+                  { key: 'active', label: 'Actifs' },
+                  { key: 'expiring', label: 'Expirent bientôt' },
+                  { key: 'all', label: 'Tous' },
+                  { key: 'expired', label: 'Expirés / Annulés' },
+                ] as { key: 'all' | 'active' | 'expired' | 'expiring'; label: string }[]).map(f => (
+                  <button
+                    key={f.key}
+                    onClick={() => setPassFilter(f.key)}
+                    style={{ background: passFilter === f.key ? '#5F3636' : '#EAE4D8', color: passFilter === f.key ? '#F4EFE4' : '#5F3636', border: 'none', padding: '0.4rem 0.9rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', cursor: 'pointer' }}
+                  >{f.label}</button>
+                ))}
+              </div>
+
+              {/* Tableau */}
+              {filtered.length === 0 ? (
+                <div style={{ background: '#EAE4D8', padding: '3rem', textAlign: 'center', fontFamily: "'DM Sans', sans-serif", color: '#6B5D52' }}>
+                  Aucun pass dans cette catégorie.
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif", fontSize: '0.82rem' }}>
+                    <thead>
+                      <tr style={{ textAlign: 'left', color: '#6B5D52', borderBottom: '2px solid rgba(95,54,54,0.15)' }}>
+                        {['Nom', 'Email', 'Téléphone', 'Statut', 'Début', 'Fin', 'Paiement', 'Actions'].map(h => (
+                          <th key={h} style={{ padding: '0.6rem 0.75rem', fontFamily: "'DM Mono', monospace", fontSize: '0.62rem', letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map(p => {
+                        const si = statusInfo(p);
+                        const expired = p.status !== 'active' || new Date(p.expires_at).getTime() < now;
+                        return (
+                          <tr key={p.id} style={{ borderBottom: '1px solid rgba(95,54,54,0.08)', color: '#5F3636' }}>
+                            <td style={{ padding: '0.6rem 0.75rem', whiteSpace: 'nowrap' }}>{[p.first_name, p.last_name].filter(Boolean).join(' ') || '—'}</td>
+                            <td style={{ padding: '0.6rem 0.75rem' }}>{p.email}</td>
+                            <td style={{ padding: '0.6rem 0.75rem', whiteSpace: 'nowrap' }}>{p.phone || '—'}</td>
+                            <td style={{ padding: '0.6rem 0.75rem' }}>
+                              <span style={{ background: si.bg, color: si.color, padding: '0.2rem 0.6rem', fontFamily: "'DM Mono', monospace", fontSize: '0.62rem', whiteSpace: 'nowrap' }}>{si.label}</span>
+                            </td>
+                            <td style={{ padding: '0.6rem 0.75rem', whiteSpace: 'nowrap' }}>{fmtDate(p.starts_at)}</td>
+                            <td style={{ padding: '0.6rem 0.75rem', whiteSpace: 'nowrap' }}>{fmtDate(p.expires_at)}</td>
+                            <td style={{ padding: '0.6rem 0.75rem', whiteSpace: 'nowrap' }}>{p.payment_provider ? `${p.payment_provider}${p.amount ? ` · ${(p.amount / 100).toFixed(0)}€` : ''}` : '—'}</td>
+                            <td style={{ padding: '0.6rem 0.75rem', whiteSpace: 'nowrap' }}>
+                              <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                <button
+                                  onClick={() => sendReminder(p.id)}
+                                  disabled={passReminderSending === p.id || !p.email}
+                                  title="Envoyer un rappel"
+                                  style={{ background: '#EAE4D8', color: '#5F3636', border: 'none', padding: '0.35rem 0.6rem', cursor: (passReminderSending === p.id || !p.email) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', opacity: (passReminderSending === p.id || !p.email) ? 0.6 : 1 }}
+                                >
+                                  <Bell size={12} /> {passReminderSending === p.id ? '…' : 'Rappel'}
+                                </button>
+                                {p.status !== 'cancelled' && !expired && (
+                                  <button
+                                    onClick={() => cancelPass(p.id)}
+                                    title="Annuler le pass"
+                                    style={{ background: 'rgba(192,50,50,0.1)', color: '#c03232', border: 'none', padding: '0.35rem 0.6rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem' }}
+                                  >
+                                    <X size={12} /> Annuler
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          );
+        })()}
+
         {/* Organizers tab — admin only */}
         {tab === 'organizers' && isAdmin && (
           <>

@@ -24,6 +24,66 @@ export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: cors });
 }
 
+// Email de confirmation pour une réservation couverte par un Pass Gaming
+async function sendPassReservationEmail(env, { to, customerName, quantity, event, passExpiresAt }) {
+  if (!env.RESEND_API_KEY) return;
+  const siteUrl = (env.SITE_URL ?? 'https://www.espace-kodoro.fr').replace(/\/$/, '');
+  const from = env.EMAIL_FROM ?? 'Espace Ködörö <reservations@espace-kodoro.fr>';
+  const eventDate = event.event_date ?? event.date ?? '';
+  const horaire = (event.start_time && event.end_time) ? `${event.start_time} – ${event.end_time}` : '';
+  const location = event.location ?? 'Espace Ködörö — Caussade';
+  const passExpires = passExpiresAt
+    ? new Date(passExpiresAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
+
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"></head>
+  <body style="margin:0;padding:0;background:#f0ebe3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0ebe3;padding:32px 16px;">
+    <tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;">
+      <tr><td style="background:#3d1f1f;padding:28px 40px;text-align:center;">
+        <p style="margin:0 0 6px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.45);">Espace Ködörö · Caussade</p>
+        <p style="margin:0;font-size:20px;font-weight:700;color:#fff;">Réservation confirmée 🎮</p>
+      </td></tr>
+      <tr><td style="background:#c9a700;height:3px;font-size:0;line-height:0;">&nbsp;</td></tr>
+      <tr><td style="padding:36px 40px;">
+        <p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.75;">Bonjour ${customerName},</p>
+        <p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.75;">Votre place est réservée grâce à votre <strong>Pass Gaming</strong> — aucun paiement supplémentaire n'est nécessaire pour cette soirée.</p>
+        <table style="background:#fbf7ef;border:1px solid #e8e0d5;width:100%;margin-bottom:20px;" cellpadding="0" cellspacing="0">
+          <tr><td style="padding:16px 20px;">
+            <p style="margin:0 0 8px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#c9a700;">Détails</p>
+            <p style="margin:0 0 4px;font-size:14px;color:#5f3636;"><strong>Événement :</strong> ${event.title ?? 'Soirée Gaming'}</p>
+            ${eventDate ? `<p style="margin:0 0 4px;font-size:14px;color:#5f3636;"><strong>Date :</strong> ${eventDate}</p>` : ''}
+            ${horaire ? `<p style="margin:0 0 4px;font-size:14px;color:#5f3636;"><strong>Horaire :</strong> ${horaire}</p>` : ''}
+            <p style="margin:0 0 4px;font-size:14px;color:#5f3636;"><strong>Lieu :</strong> ${location}</p>
+            <p style="margin:0 0 4px;font-size:14px;color:#5f3636;"><strong>Places :</strong> ${quantity}</p>
+            ${passExpires ? `<p style="margin:0;font-size:14px;color:#5f3636;"><strong>Pass valable jusqu'au :</strong> ${passExpires}</p>` : ''}
+          </td></tr>
+        </table>
+        <p style="margin:0;color:#333;font-size:15px;line-height:1.75;">À bientôt,<br><strong style="color:#5f3636;">Lucas — Espace Ködörö</strong></p>
+      </td></tr>
+      <tr><td style="background:#f7f3ed;padding:20px 40px;text-align:center;border-top:1px solid #e8e0d5;">
+        <p style="margin:0;font-size:12px;color:#999;">Espace Ködörö · 25 boulevard Didier Rey · 82300 Caussade</p>
+        <p style="margin:4px 0 0;font-size:12px;color:#999;"><a href="${siteUrl}" style="color:#999;">espace-kodoro.fr</a></p>
+      </td></tr>
+    </table></td></tr>
+  </table></body></html>`;
+
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from, to: [to], subject: 'Réservation confirmée — Soirée Gaming · Espace Ködörö', html }),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      console.error('[create-checkout] Resend pass reservation error:', res.status, err);
+    }
+  } catch (err) {
+    console.error('[create-checkout] sendPassReservationEmail:', err);
+  }
+}
+
 export async function onRequestPost({ request, env }) {
   // ── 1. Lire et valider le corps de la requête ──────────────────────────────
   let body;
@@ -101,6 +161,96 @@ export async function onRequestPost({ request, env }) {
       },
       { status: 409, headers: cors }
     );
+  }
+
+  // ── 4bis. Pass Gaming actif ? → réservation gratuite sans Stripe ──────────
+  const normalizedEmail = email.trim().toLowerCase();
+  let activePass = null;
+  try {
+    activePass = await env.DB.prepare(`
+      SELECT gp.id, gp.expires_at FROM gaming_passes gp
+      JOIN contacts c ON c.id = gp.contact_id
+      WHERE c.email = ? AND gp.status = 'active'
+        AND gp.starts_at <= datetime('now') AND gp.expires_at >= datetime('now')
+      ORDER BY gp.expires_at DESC LIMIT 1
+    `).bind(normalizedEmail).first();
+  } catch (err) {
+    console.error('[create-checkout] check pass:', err);
+  }
+
+  if (activePass) {
+    let passReservationId;
+    try {
+      const reservationResult = await env.DB.prepare(`
+        INSERT INTO reservations
+          (event_id, customer_name, email, phone, quantity, status,
+           amount_cents, utm_source, utm_medium, utm_campaign,
+           utm_content, utm_term, referrer, landing_page, comment,
+           newsletter_consent, pass_id, payment_type)
+        VALUES (?, ?, ?, ?, ?, 'paid', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pass_included')
+      `).bind(
+        event_id,
+        customer_name.trim(),
+        normalizedEmail,
+        phone.trim(),
+        qty,
+        utm_source   ?? null,
+        utm_medium   ?? null,
+        utm_campaign ?? null,
+        utm_content  ?? null,
+        utm_term     ?? null,
+        referrer     ?? null,
+        landing_page ?? null,
+        comment?.trim() || null,
+        newsletter_consent ? 1 : 0,
+        activePass.id,
+      ).run();
+
+      passReservationId = reservationResult.meta.last_row_id;
+    } catch (err) {
+      console.error('[create-checkout] DB insert pass reservation:', err);
+      return Response.json({ error: 'Erreur lors de la création de la réservation' }, { status: 500, headers: cors });
+    }
+
+    // Participants
+    if (participants.length > 0) {
+      const participantStmts = participants
+        .filter(p => p?.full_name?.trim())
+        .map(p =>
+          env.DB.prepare(
+            'INSERT INTO participants (reservation_id, full_name, is_minor, age) VALUES (?, ?, ?, ?)'
+          ).bind(
+            passReservationId,
+            p.full_name.trim(),
+            p.is_minor ? 1 : 0,
+            (p.is_minor && p.age) ? parseInt(p.age, 10) : null,
+          )
+        );
+      if (participantStmts.length > 0) await env.DB.batch(participantStmts);
+    }
+
+    // Matériel apporté
+    if (equipment.length > 0) {
+      const equipStmts = equipment
+        .filter(e => typeof e === 'string' && e.trim())
+        .map(e =>
+          env.DB.prepare(
+            'INSERT INTO equipment_offers (reservation_id, equipment_type) VALUES (?, ?)'
+          ).bind(passReservationId, e.trim())
+        );
+      if (equipStmts.length > 0) await env.DB.batch(equipStmts);
+    }
+
+    // Email de confirmation (réservation incluse dans le pass)
+    await sendPassReservationEmail(env, {
+      to: normalizedEmail,
+      customerName: customer_name.trim(),
+      quantity: qty,
+      event,
+      passExpiresAt: activePass.expires_at,
+    });
+
+    return Response.json({ pass_reservation: true, reservation_id: passReservationId }, { headers: cors });
   }
 
   // ── 4. Calculer le montant ────────────────────────────────────────────────

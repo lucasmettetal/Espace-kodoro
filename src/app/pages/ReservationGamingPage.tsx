@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { ActivityLayout } from './ActivityLayout';
 import { useUtm } from '../hooks/useUtm';
 
@@ -138,6 +138,7 @@ function blurBorder(e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>)
 
 export function ReservationGamingPage() {
   const utmParams = useUtm();
+  const navigate = useNavigate();
 
   // ── Chargement de l'événement ──────────────────────────────────────────────
   const [eventInfo, setEventInfo] = useState<EventInfo | null>(null);
@@ -238,6 +239,12 @@ export function ReservationGamingPage() {
 
       if (!res.ok) {
         setSubmitError(data.error ?? 'Une erreur est survenue. Réessayez dans quelques instants.');
+        return;
+      }
+
+      // Réservation couverte par un Pass Gaming actif → pas de paiement Stripe
+      if (data.pass_reservation) {
+        navigate('/merci-reservation-gaming?pass=1');
         return;
       }
 

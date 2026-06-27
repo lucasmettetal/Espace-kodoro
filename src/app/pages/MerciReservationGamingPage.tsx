@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { ActivityLayout } from './ActivityLayout';
 
 // ─────────────────────────────────────────────────────────────
@@ -23,6 +23,8 @@ type SiteConfig = {
 
 export function MerciReservationGamingPage() {
   const [cfg, setCfg] = useState<SiteConfig>({ gaming_whatsapp_link: '' });
+  const [searchParams] = useSearchParams();
+  const isPass = searchParams.get('pass') === '1';
 
   // Charger la config pour récupérer le lien WhatsApp dynamique
   useEffect(() => {
@@ -69,7 +71,7 @@ export function MerciReservationGamingPage() {
           </div>
 
           <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.7rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#C9A700', marginBottom: '1rem' }}>
-            Paiement reçu
+            {isPass ? 'Réservation enregistrée' : 'Paiement reçu'}
           </p>
 
           <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 'clamp(1.75rem, 4vw, 3rem)', fontWeight: 700, lineHeight: 1.2, color: '#F4EFE4', margin: 0, marginBottom: '1.5rem' }}>
@@ -78,8 +80,9 @@ export function MerciReservationGamingPage() {
           </h1>
 
           <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 'clamp(0.95rem, 1.6vw, 1.05rem)', lineHeight: 1.85, color: 'rgba(244,239,228,0.8)', maxWidth: 580, margin: '0 auto 2rem' }}>
-            Votre paiement a bien été reçu. Votre place sera enregistrée après validation
-            finale du paiement. Vous recevrez les informations utiles avant la soirée.
+            {isPass
+              ? 'Votre place est réservée grâce à votre Pass Gaming — aucun paiement supplémentaire n\'est nécessaire pour cette soirée. Vous recevrez les informations utiles avant la soirée.'
+              : 'Votre paiement a bien été reçu. Votre place sera enregistrée après validation finale du paiement. Vous recevrez les informations utiles avant la soirée.'}
           </p>
 
           {/* Rappel de l'événement */}

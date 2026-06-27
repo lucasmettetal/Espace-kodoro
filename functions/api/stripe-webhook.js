@@ -192,6 +192,59 @@ async function sendConfirmationEmail({ env, to, customerName, reservation, parti
   }
 }
 
+// ── Email de confirmation Pass Gaming ─────────────────────────────────────────
+async function sendPassConfirmationEmail(env, { to, customerName, expiresAt }) {
+  if (!env.RESEND_API_KEY) return;
+  const siteUrl = (env.SITE_URL ?? 'https://www.espace-kodoro.fr').replace(/\/$/, '');
+  const from = env.EMAIL_FROM ?? 'Espace Ködörö <reservations@espace-kodoro.fr>';
+  const expiresFormatted = new Date(expiresAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"></head>
+  <body style="margin:0;padding:0;background:#f0ebe3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0ebe3;padding:32px 16px;">
+    <tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;">
+      <tr><td style="background:#3d1f1f;padding:28px 40px;text-align:center;">
+        <p style="margin:0 0 6px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.45);">Espace Ködörö · Caussade</p>
+        <p style="margin:0;font-size:20px;font-weight:700;color:#fff;">Votre Pass Gaming est actif 🎮</p>
+      </td></tr>
+      <tr><td style="background:#c9a700;height:3px;font-size:0;line-height:0;">&nbsp;</td></tr>
+      <tr><td style="padding:36px 40px;">
+        <p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.75;">Bonjour ${customerName},</p>
+        <p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.75;">Votre <strong>Pass Gaming Trimestre</strong> est maintenant actif. Il vous permet de participer aux soirées gaming classiques de l'Espace Ködörö pendant 3 mois.</p>
+        <table style="background:#fbf7ef;border:1px solid #e8e0d5;width:100%;margin-bottom:20px;" cellpadding="0" cellspacing="0">
+          <tr><td style="padding:16px 20px;">
+            <p style="margin:0 0 8px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#c9a700;">Détails du pass</p>
+            <p style="margin:0 0 4px;font-size:14px;color:#5f3636;"><strong>Type :</strong> Pass Gaming Trimestre</p>
+            <p style="margin:0 0 4px;font-size:14px;color:#5f3636;"><strong>Valable jusqu'au :</strong> ${expiresFormatted}</p>
+            <p style="margin:0;font-size:14px;color:#5f3636;"><strong>Montant payé :</strong> 20 €</p>
+          </td></tr>
+        </table>
+        <p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.75;">Pensez simplement à <strong>réserver votre place</strong> pour chaque soirée afin que nous puissions organiser la salle et le matériel.</p>
+        <p style="margin:0;color:#333;font-size:15px;line-height:1.75;">À bientôt,<br><strong style="color:#5f3636;">Lucas — Espace Ködörö</strong></p>
+      </td></tr>
+      <tr><td style="background:#f7f3ed;padding:20px 40px;text-align:center;border-top:1px solid #e8e0d5;">
+        <p style="margin:0;font-size:12px;color:#999;">Espace Ködörö · 25 boulevard Didier Rey · 82300 Caussade</p>
+        <p style="margin:4px 0 0;font-size:12px;color:#999;"><a href="${siteUrl}" style="color:#999;">espace-kodoro.fr</a></p>
+      </td></tr>
+    </table></td></tr>
+  </table></body></html>`;
+
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from, to: [to], subject: 'Votre Pass Gaming est actif 🎮', html }),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      console.error('[stripe-webhook] Resend pass error:', res.status, err);
+    }
+  } catch (err) {
+    console.error('[stripe-webhook] sendPassConfirmationEmail:', err);
+  }
+}
+
 // ── Handler principal ─────────────────────────────────────────────────────────
 export async function onRequestPost({ request, env }) {
   // 1. Corps brut obligatoire pour la vérification de signature Stripe
@@ -218,6 +271,67 @@ export async function onRequestPost({ request, env }) {
 
       case 'checkout.session.completed': {
         const session       = stripeEvent.data.object;
+
+        // ── Pass Gaming Trimestre ────────────────────────────────────────────
+        if (session.metadata?.product_type === 'gaming_pass') {
+          const contactId = parseInt(session.metadata.contact_id);
+          const now = new Date();
+          const expiresAt = new Date(now);
+          expiresAt.setMonth(expiresAt.getMonth() + 3);
+          const expiresAtSql = expiresAt.toISOString().slice(0, 19).replace('T', ' ');
+
+          // Idempotence : ne pas recréer un pass si la session a déjà été traitée
+          const existing = await env.DB.prepare(
+            'SELECT id FROM gaming_passes WHERE stripe_session_id = ?'
+          ).bind(session.id).first();
+
+          if (existing) {
+            console.log(`[stripe-webhook] Pass déjà créé pour la session ${session.id}.`);
+            break;
+          }
+
+          // Créer le pass
+          const passResult = await env.DB.prepare(`
+            INSERT INTO gaming_passes (contact_id, pass_type, status, starts_at, expires_at, stripe_session_id)
+            VALUES (?, 'quarterly', 'active', datetime('now'), ?, ?)
+          `).bind(contactId, expiresAtSql, session.id).run();
+
+          const passId = passResult.meta.last_row_id;
+
+          // Mettre à jour le paiement (créé en pending lors du checkout)
+          const updated = await env.DB.prepare(`
+            UPDATE payments SET status='paid', paid_at=datetime('now'), pass_id=?, contact_id=?
+            WHERE provider_payment_id=? AND payment_provider='stripe'
+          `).bind(passId, contactId, session.id).run();
+
+          // Si aucun paiement pending n'existait (cas limite), en créer un payé
+          if (!updated.meta.changes) {
+            await env.DB.prepare(`
+              INSERT INTO payments (contact_id, pass_id, payment_provider, provider_payment_id, amount, currency, status, paid_at)
+              VALUES (?, ?, 'stripe', ?, ?, 'eur', 'paid', datetime('now'))
+            `).bind(contactId, passId, session.id, session.amount_total ?? 2000).run();
+          }
+
+          console.log(`[stripe-webhook] Pass Gaming ${passId} activé pour le contact ${contactId}.`);
+
+          // Email de confirmation du pass
+          const contact = await env.DB.prepare(
+            'SELECT email, first_name, last_name FROM contacts WHERE id = ?'
+          ).bind(contactId).first();
+
+          if (contact?.email) {
+            const customerName = [contact.first_name, contact.last_name].filter(Boolean).join(' ')
+              || session.metadata.customer_email || 'à toi';
+            await sendPassConfirmationEmail(env, {
+              to: contact.email,
+              customerName,
+              expiresAt: expiresAt.toISOString(),
+            });
+          }
+          break;
+        }
+
+        // ── Réservation à l'unité ────────────────────────────────────────────
         const reservationId = session.metadata?.reservation_id;
 
         if (!reservationId) {
