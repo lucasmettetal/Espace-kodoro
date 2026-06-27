@@ -121,6 +121,14 @@ export function GamingPage() {
             >
               Réserver la prochaine soirée
             </Link>
+            <Link
+              to="/pass-gaming"
+              style={{ display: 'inline-block', border: '1px solid rgba(201,167,0,0.6)', color: '#C9A700', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', textDecoration: 'none', padding: '0.75rem 2rem', transition: 'border-color 0.2s, background 0.2s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(201,167,0,0.12)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              Pass Gaming Trimestre — 20 €
+            </Link>
             <a
               href={waHref}
               target={cfg.gaming_whatsapp_link ? '_blank' : undefined}
@@ -185,14 +193,27 @@ export function GamingPage() {
               </Link>
             </div>
 
-            <div style={{ background: '#F4EFE4', border: '1px solid rgba(95,54,54,0.1)', padding: 'clamp(1.5rem, 3vw, 2rem)' }}>
+            <div style={{ background: '#3d1f1f', border: '1px solid rgba(201,167,0,0.3)', padding: 'clamp(1.5rem, 3vw, 2rem)' }}>
               <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C9A700', marginBottom: '0.75rem' }}>
-                Pourquoi un paiement en ligne ?
+                Formule engagement
               </p>
-              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', lineHeight: 1.8, color: '#6B5D52', margin: 0 }}>
-                Votre place est réservée uniquement après paiement. Le paiement en ligne permet de confirmer
-                les places à l'avance et de faciliter l'accueil le soir de la soirée.
+              <p style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.5rem', fontWeight: 700, color: '#F4EFE4', margin: '0 0 0.25rem' }}>
+                Pass Gaming Trimestre
               </p>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '1.75rem', fontWeight: 700, color: '#C9A700', margin: '0 0 1rem' }}>20 €</p>
+              <ul style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', lineHeight: 1.8, color: 'rgba(244,239,228,0.75)', margin: '0 0 1.5rem', paddingLeft: '1.25rem' }}>
+                <li>Accès aux soirées gaming classiques pendant 3 mois</li>
+                <li>Réservation obligatoire à chaque soirée</li>
+                <li>Pas de repaiement à chaque soirée</li>
+              </ul>
+              <Link
+                to="/pass-gaming"
+                style={{ display: 'inline-block', background: '#C9A700', color: '#fff', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', textDecoration: 'none', padding: '0.75rem 1.5rem', transition: 'background 0.2s' }}
+                onMouseEnter={e => (e.currentTarget.style.background = '#D4B930')}
+                onMouseLeave={e => (e.currentTarget.style.background = '#C9A700')}
+              >
+                Découvrir le Pass Gaming
+              </Link>
             </div>
           </div>
         </div>
