@@ -126,6 +126,9 @@ export function OrganizerDashboard() {
   const [campaignStats, setCampaignStats] = useState<{ subscribed: number } | null>(null);
   const [campaignSending, setCampaignSending] = useState(false);
   const [campaignPreviewCount, setCampaignPreviewCount] = useState<number | null>(null);
+  const [testEmail, setTestEmail] = useState('');
+  const [testSending, setTestSending] = useState(false);
+  const [testResult, setTestResult] = useState<string>('');
 
   // ── Import CSV ─────────────────────────────────────────────────────────────
   const [csvList, setCsvList] = useState('gaming');
@@ -387,6 +390,30 @@ export function OrganizerDashboard() {
       }
     } catch { alert('Erreur réseau'); }
     finally { setCampaignSending(false); }
+  }
+
+  async function sendTest() {
+    if (!campaignForm.subject.trim() || !campaignForm.html_content.trim()) {
+      setTestResult('⚠ Remplis d\'abord le sujet et le message.');
+      return;
+    }
+    if (!testEmail.trim()) {
+      setTestResult('⚠ Saisis une adresse email de test.');
+      return;
+    }
+    setTestSending(true);
+    setTestResult('');
+    try {
+      const res = await fetch('/api/organizer/campaigns', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...campaignForm, test_email: testEmail.trim() }),
+      });
+      const d = await res.json();
+      if (res.ok) setTestResult(`✓ Test envoyé à ${d.sent_to}`);
+      else setTestResult(`⚠ ${d.error ?? 'Erreur'}`);
+    } catch { setTestResult('⚠ Erreur réseau'); }
+    finally { setTestSending(false); }
   }
 
   const resetManualForm = () => {
@@ -1208,6 +1235,31 @@ export function OrganizerDashboard() {
                         ✦ Écris ton message en texte simple — la mise en page Espace Ködörö est appliquée automatiquement. Saute une ligne entre chaque paragraphe. Tu peux aussi utiliser <code style={{ background: 'rgba(0,0,0,0.06)', padding: '0 3px' }}>&lt;b&gt;</code>, <code style={{ background: 'rgba(0,0,0,0.06)', padding: '0 3px' }}>&lt;a href="..."&gt;</code> si besoin.
                       </p>
                     </div>
+                  </div>
+
+                  {/* Test email */}
+                  <div style={{ padding: '1rem', background: '#F4EFE4', border: '1px solid rgba(201,167,0,0.2)' }}>
+                    <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.58rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C9A700', margin: '0 0 0.6rem' }}>Envoyer un test</p>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <input
+                        type="email"
+                        placeholder="ton@email.fr"
+                        value={testEmail}
+                        onChange={e => { setTestEmail(e.target.value); setTestResult(''); }}
+                        style={{ flex: 1, padding: '0.55rem 0.75rem', border: '1px solid #EAE4D8', background: '#fff', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: '#5F3636', minWidth: 0 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={sendTest}
+                        disabled={testSending}
+                        style={{ background: testSending ? '#9B8F89' : '#C9A700', color: '#fff', border: 'none', padding: '0.55rem 1rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', fontWeight: 600, cursor: testSending ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}
+                      >
+                        {testSending ? '...' : 'Tester'}
+                      </button>
+                    </div>
+                    {testResult && (
+                      <p style={{ margin: '0.5rem 0 0', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', color: testResult.startsWith('✓') ? '#2E7D32' : '#C62828' }}>{testResult}</p>
+                    )}
                   </div>
 
                   <div style={{ display: 'flex', gap: '0.75rem' }}>

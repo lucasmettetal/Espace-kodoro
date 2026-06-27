@@ -99,7 +99,7 @@ export async function onRequestPost({ request, env }) {
   const payload = await requireAuth(request, env);
   if (!payload) return Response.json({ error: 'Non autorisé' }, { status: 401, headers: cors });
 
-  const { list_name, subject, html_content, preview_only } = await request.json();
+  const { list_name, subject, html_content, preview_only, test_email } = await request.json();
 
   if (!list_name || !subject || !html_content) {
     return Response.json({ error: 'list_name, subject et html_content sont requis' }, { status: 400, headers: cors });
@@ -110,6 +110,26 @@ export async function onRequestPost({ request, env }) {
 
   const sender  = LIST_SENDERS[list_name] ?? LIST_SENDERS.gaming;
   const siteUrl = (env.SITE_URL ?? 'https://www.espace-kodoro.fr').replace(/\/$/, '');
+
+  // ── Mode test : envoyer à une seule adresse ───────────────────────────────
+  if (test_email) {
+    const html = wrapInTemplate({
+      content: html_content,
+      subject: `[TEST] ${subject}`,
+      siteUrl,
+      unsubHtml: `<p style="margin:0.5rem 0 0;font-size:0.7rem;color:#9B8F89;">— Ceci est un email de test —</p>`,
+    });
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: `${sender.name} <${sender.email}>`, to: [test_email], subject: `[TEST] ${subject}`, html }),
+    });
+    if (res.ok) {
+      return Response.json({ test: true, sent_to: test_email }, { headers: cors });
+    }
+    const err = await res.text();
+    return Response.json({ error: `Resend error: ${err}` }, { status: 500, headers: cors });
+  }
 
   // Récupérer les destinataires selon la liste
   let contacts;
