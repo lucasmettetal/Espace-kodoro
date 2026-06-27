@@ -1,5 +1,5 @@
-// GET /api/organizer/contacts?list=gaming
-// Retourne les contacts abonnés à une liste donnée.
+// GET /api/organizer/contacts?list=gaming&search=lucas&status=subscribed&source=import
+// Retourne les contacts d'une liste avec filtres optionnels.
 
 import { requireAuth } from '../_auth.js';
 
@@ -18,17 +18,41 @@ export async function onRequestGet({ request, env }) {
 
   const url      = new URL(request.url);
   const listName = url.searchParams.get('list') ?? 'gaming';
+  const search   = (url.searchParams.get('search') ?? '').trim();
+  const status   = url.searchParams.get('status') ?? 'all';   // 'subscribed' | 'unsubscribed' | 'all'
+  const source   = url.searchParams.get('source') ?? '';       // 'import' | 'reservation' | 'manual' | ''
 
   try {
+    const conditions = ['cs.list_name = ?'];
+    const bindings   = [listName];
+
+    if (status !== 'all') {
+      conditions.push('cs.status = ?');
+      bindings.push(status);
+    }
+
+    if (source) {
+      conditions.push('c.source = ?');
+      bindings.push(source);
+    }
+
+    if (search) {
+      conditions.push('(c.email LIKE ? OR c.first_name LIKE ? OR c.last_name LIKE ?)');
+      const like = `%${search}%`;
+      bindings.push(like, like, like);
+    }
+
+    const where = conditions.join(' AND ');
+
     const { results: contacts } = await env.DB.prepare(`
       SELECT
         c.id, c.email, c.first_name, c.last_name, c.phone, c.source,
-        cs.status, cs.subscribed_at, cs.unsubscribed_at
+        cs.list_name, cs.status, cs.subscribed_at, cs.unsubscribed_at
       FROM contacts c
       JOIN contact_subscriptions cs ON cs.contact_id = c.id
-      WHERE cs.list_name = ?
+      WHERE ${where}
       ORDER BY cs.subscribed_at DESC
-    `).bind(listName).all();
+    `).bind(...bindings).all();
 
     const subscribed   = contacts.filter(c => c.status === 'subscribed').length;
     const unsubscribed = contacts.filter(c => c.status === 'unsubscribed').length;

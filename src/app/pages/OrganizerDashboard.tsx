@@ -130,12 +130,27 @@ export function OrganizerDashboard() {
   const [testSending, setTestSending] = useState(false);
   const [testResult, setTestResult] = useState<string>('');
 
+  // ── Campagnes — stats page ─────────────────────────────────────────────────
+  type CampaignStats2 = { gaming: number; kodoro_general: number; reservations: number; csv_imports: number; unsubscribed: number; last_campaign: { subject: string; sent_at: string; sent_count: number } | null; last_import: string | null };
+  const [campaignPageStats, setCampaignPageStats] = useState<CampaignStats2 | null>(null);
+
+  // ── CSV preview ────────────────────────────────────────────────────────────
+  const [csvShowPreview, setCsvShowPreview] = useState(false);
+
+  // ── Contacts filters ───────────────────────────────────────────────────────
+  const [contactsSearch, setContactsSearch] = useState('');
+  const [contactsStatusFilter, setContactsStatusFilter] = useState('all');
+  const [contactsSourceFilter, setContactsSourceFilter] = useState('');
+
+  // ── Send confirmation modal ────────────────────────────────────────────────
+  const [showSendConfirm, setShowSendConfirm] = useState(false);
+
   // ── Import CSV ─────────────────────────────────────────────────────────────
   const [csvList, setCsvList] = useState('gaming');
   const [csvParsed, setCsvParsed] = useState<{ email: string; first_name: string; last_name: string; phone: string }[]>([]);
   const [csvFileName, setCsvFileName] = useState('');
   const [csvImporting, setCsvImporting] = useState(false);
-  const [csvResult, setCsvResult] = useState<{ imported: number; updated: number; errors: { email: string; reason: string }[] } | null>(null);
+  const [csvResult, setCsvResult] = useState<{ total?: number; created?: number; imported?: number; updated?: number; already_exists?: number; skipped_unsubscribed?: number; skipped_invalid?: number; errors: { email: string; reason: string }[] } | null>(null);
   const [csvError, setCsvError] = useState('');
 
   function parseCsv(text: string) {
@@ -153,29 +168,41 @@ export function OrganizerDashboard() {
     const headers = rawHeaders.map(h => h.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, ''));
 
     const COL: Record<string, string[]> = {
-      email:      ['email', 'email', 'adresseemail', 'adressee-mail', 'courriel', 'emailaddress', 'emal'],
-      first_name: ['firstname', 'prenom', 'first_name', 'givenname', 'forename'],
-      last_name:  ['lastname', 'nom', 'last_name', 'nomdefamille', 'surname', 'familyname'],
-      phone:      ['phone', 'telephone', 'phonenumber', 'numerodeteleph', 'mobile', 'portable'],
+      email:      ['email', 'mail', 'adresseemail', 'adressemail', 'courriel', 'emailaddress', 'emal'],
+      first_name: ['firstname', 'first_name', 'prenom', 'givenname', 'forename'],
+      last_name:  ['lastname', 'last_name', 'nom', 'surname', 'familyname'],
+      full_name:  ['fullname', 'full_name', 'nomcomplet', 'nomprenom', 'name'],
+      phone:      ['phone', 'telephone', 'phonenumber', 'mobile', 'portable', 'tel'],
+      source:     ['source', 'campaign', 'campaignname', 'campagne', 'metacampaign', 'facebookcampaign'],
     };
     const idx: Record<string, number> = {};
     for (const [field, aliases] of Object.entries(COL)) {
-      const found = headers.findIndex(h => aliases.some(a => h.includes(a)));
+      const found = headers.findIndex(h => aliases.some(a => h === a || h.includes(a)));
       if (found !== -1) idx[field] = found;
     }
-    if (idx.email === undefined) return null;
+    // Email OR phone required
+    if (idx.email === undefined && idx.phone === undefined) return null;
 
     return lines.slice(1)
       .filter(l => l.trim())
       .map(line => {
         const cols = splitLine(line);
-        return {
-          email:      (cols[idx.email]      ?? '').toLowerCase().trim(),
-          first_name: cols[idx.first_name]  ?? '',
-          last_name:  cols[idx.last_name]   ?? '',
-          phone:      cols[idx.phone]        ?? '',
-        };
-      }).filter(r => r.email);
+        const email     = idx.email !== undefined ? (cols[idx.email] ?? '').toLowerCase().trim() : '';
+        const rawPhone  = idx.phone !== undefined ? (cols[idx.phone] ?? '').trim() : '';
+        let first_name  = idx.first_name !== undefined ? (cols[idx.first_name] ?? '').trim() : '';
+        let last_name   = idx.last_name  !== undefined ? (cols[idx.last_name]  ?? '').trim() : '';
+        const source    = idx.source !== undefined ? (cols[idx.source] ?? '').trim() : '';
+
+        // Si full_name présent et prénom/nom absents, splitter sur espace
+        if (!first_name && !last_name && idx.full_name !== undefined) {
+          const full = (cols[idx.full_name] ?? '').trim();
+          const parts = full.split(/\s+/);
+          first_name = parts[0] ?? '';
+          last_name  = parts.slice(1).join(' ');
+        }
+
+        return { email, first_name, last_name, phone: rawPhone, source };
+      }).filter(r => r.email || (r.phone && r.phone.replace(/\D/g, '').length >= 6));
   }
 
   function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -189,7 +216,7 @@ export function OrganizerDashboard() {
     reader.onload = ev => {
       const result = parseCsv(ev.target?.result as string);
       if (result === null) {
-        setCsvError('Colonne "email" introuvable. Vérifie que le CSV contient bien une colonne email.');
+        setCsvError('Colonnes introuvables. Le CSV doit contenir au moins une colonne email ou téléphone.');
         return;
       }
       if (result.length === 0) {
@@ -197,6 +224,7 @@ export function OrganizerDashboard() {
         return;
       }
       setCsvParsed(result);
+      setCsvShowPreview(true);
     };
     reader.readAsText(file, 'UTF-8');
   }
@@ -347,9 +375,20 @@ export function OrganizerDashboard() {
     } catch { /* */ }
   }
 
+  async function fetchCampaignPageStats() {
+    try {
+      const res = await fetch('/api/organizer/campaigns-stats', { headers });
+      if (res.ok) setCampaignPageStats(await res.json());
+    } catch { /* */ }
+  }
+
   async function fetchContactsList(listName: string) {
     try {
-      const res = await fetch(`/api/organizer/contacts?list=${listName}`, { headers });
+      const params = new URLSearchParams({ list: listName });
+      if (contactsSearch) params.set('search', contactsSearch);
+      if (contactsStatusFilter !== 'all') params.set('status', contactsStatusFilter);
+      if (contactsSourceFilter) params.set('source', contactsSourceFilter);
+      const res = await fetch(`/api/organizer/contacts?${params}`, { headers });
       if (res.ok) { const d = await res.json(); setContactsList(d.contacts ?? []); setCampaignStats(d.stats); }
     } catch { /* */ }
   }
@@ -371,7 +410,6 @@ export function OrganizerDashboard() {
       alert('Remplis le sujet et le contenu.');
       return;
     }
-    if (!confirm(`Envoyer à ${campaignPreviewCount ?? '?'} contacts ? Cette action est irréversible.`)) return;
     setCampaignSending(true);
     try {
       const res = await fetch('/api/organizer/campaigns', {
@@ -623,7 +661,7 @@ export function OrganizerDashboard() {
           ].map(({ key, label, icon: Icon }) => (
             <button
               key={key}
-              onClick={() => { setTab(key as any); if (key === 'reservations') fetchReservations(); if (key === 'campaigns') { fetchCampaigns(); fetchContactStats('gaming'); } }}
+              onClick={() => { setTab(key as any); if (key === 'reservations') fetchReservations(); if (key === 'campaigns') { fetchCampaigns(); fetchContactStats('gaming'); fetchCampaignPageStats(); } }}
               className="dk-tab-btn"
               style={{ background: tab === key ? '#5F3636' : '#EAE4D8', color: tab === key ? '#F4EFE4' : '#5F3636' }}
             >
@@ -1036,92 +1074,172 @@ export function OrganizerDashboard() {
                 <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.4rem', fontWeight: 700, color: '#5F3636', margin: 0 }}>Campagnes email</h2>
               </div>
 
+              {/* ── Vue rapide — cartes statistiques ──────────────────────── */}
+              <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.75rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
+                {[
+                  { label: 'Gaming', value: campaignPageStats?.gaming ?? '—', sub: 'abonnés opt-in', color: '#5F3636' },
+                  { label: 'Général Ködörö', value: campaignPageStats?.kodoro_general ?? '—', sub: 'abonnés', color: '#5F3636' },
+                  { label: 'Inscrits', value: campaignPageStats?.reservations ?? '—', sub: 'réservations payées', color: '#2E7D32' },
+                  { label: 'Importés CSV', value: campaignPageStats?.csv_imports ?? '—', sub: 'contacts source import', color: '#C9A700' },
+                  { label: 'Désinscrits', value: campaignPageStats?.unsubscribed ?? '—', sub: 'toutes listes', color: '#9B8F89' },
+                  ...(campaignPageStats?.last_campaign ? [{
+                    label: 'Dernière campagne',
+                    value: campaignPageStats.last_campaign.sent_count,
+                    sub: campaignPageStats.last_campaign.subject.length > 28
+                      ? campaignPageStats.last_campaign.subject.slice(0, 28) + '…'
+                      : campaignPageStats.last_campaign.subject,
+                    color: '#5F3636',
+                  }] : []),
+                ].map((card, i) => (
+                  <div key={i} style={{ background: '#fff', border: '1px solid rgba(95,54,54,0.08)', padding: '0.875rem 1.25rem', minWidth: '140px', flexShrink: 0 }}>
+                    <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.55rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9B8F89', margin: '0 0 0.4rem' }}>{card.label}</p>
+                    <p style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.6rem', fontWeight: 700, color: card.color, margin: '0 0 0.2rem', lineHeight: 1 }}>{card.value}</p>
+                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.7rem', color: '#9B8F89', margin: 0 }}>{card.sub}</p>
+                  </div>
+                ))}
+                {!campaignPageStats && (
+                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', color: '#9B8F89', alignSelf: 'center', marginLeft: '0.5rem' }}>Chargement des stats…</p>
+                )}
+              </div>
+
               {/* ── Import CSV ─────────────────────────────────────────────── */}
-              <div style={{ background: '#fff', border: '1px solid rgba(95,54,54,0.08)', padding: '1.25rem 1.5rem', marginBottom: '1.5rem' }}>
-                <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#C9A700', margin: '0 0 1rem' }}>Importer des contacts CSV</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end' }}>
-                  <div>
-                    <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#6B5D52', display: 'block', marginBottom: '0.3rem' }}>Liste cible</label>
-                    <select
-                      value={csvList}
-                      onChange={e => setCsvList(e.target.value)}
-                      style={{ padding: '0.55rem 0.75rem', border: '1px solid #EAE4D8', background: '#FDFAF5', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: '#5F3636' }}
-                    >
-                      <option value="gaming">Gaming</option>
-                      <option value="evenements">Événements</option>
-                      <option value="kodoro_general">Général Ködörö</option>
-                    </select>
-                    <p style={{ margin: '0.25rem 0 0', fontFamily: "'DM Sans', sans-serif", fontSize: '0.72rem', color: '#9B8F89' }}>
-                      La liste "Inscrits" se remplit automatiquement via les réservations payées.
-                    </p>
-                  </div>
-                  <div>
-                    <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#6B5D52', display: 'block', marginBottom: '0.3rem' }}>Fichier CSV</label>
-                    <input
-                      type="file"
-                      accept=".csv,text/csv"
-                      onChange={handleCsvFile}
-                      style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: '#5F3636' }}
-                    />
-                  </div>
-                  {csvParsed.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={importCsv}
-                      disabled={csvImporting}
-                      style={{ background: csvImporting ? '#9B8F89' : '#5F3636', color: '#F4EFE4', border: 'none', padding: '0.6rem 1.25rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', fontWeight: 600, cursor: csvImporting ? 'wait' : 'pointer' }}
-                    >
-                      {csvImporting ? 'Import...' : `Importer ${csvParsed.length} contacts`}
-                    </button>
-                  )}
-                </div>
-                {csvError && (
-                  <div style={{ marginTop: '0.75rem', padding: '0.75rem 1rem', background: '#FBE9E7', borderLeft: '3px solid #C62828' }}>
-                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: '#C62828', margin: 0 }}>⚠ {csvError}</p>
-                    <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.7rem', color: '#9B8F89', margin: '0.4rem 0 0' }}>
-                      Colonnes attendues : email (ou e-mail, courriel), firstname (ou prénom), lastname (ou nom)
-                    </p>
-                  </div>
-                )}
-                {csvParsed.length > 0 && !csvResult && (
-                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#2E7D32', margin: '0.75rem 0 0' }}>
-                    ✓ {csvFileName} — {csvParsed.length} contact{csvParsed.length > 1 ? 's' : ''} prêt{csvParsed.length > 1 ? 's' : ''} à importer
-                    {csvParsed[0]?.first_name ? ' (avec prénom)' : ''}{csvParsed[0]?.last_name ? ' (avec nom)' : ''}
+              <div style={{ background: '#fff', border: '1px solid rgba(95,54,54,0.08)', marginBottom: '1.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => {}}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.5rem', background: 'none', border: 'none', cursor: 'default', fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#C9A700' }}
+                >
+                  <span>Importer des contacts CSV</span>
+                </button>
+                <div style={{ padding: '0 1.5rem 1.25rem' }}>
+                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#9B8F89', margin: '0 0 1rem', padding: '0.5rem 0.75rem', background: '#FBF7EF', borderLeft: '3px solid #C9A700' }}>
+                    L'import ajoute les contacts à la liste sélectionnée. Aucun email n'est envoyé automatiquement.
                   </p>
-                )}
-                {csvResult && (
-                  <div style={{ marginTop: '0.75rem' }}>
-                    <div style={{ padding: '0.75rem 1rem', background: csvResult.errors.length === 0 ? '#E8F5E9' : '#FFF8E1', borderLeft: `3px solid ${csvResult.errors.length === 0 ? '#2E7D32' : '#C9A700'}` }}>
-                      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: '#5F3636', margin: 0 }}>
-                        ✓ {csvResult.imported} nouveau{csvResult.imported > 1 ? 'x' : ''} · {csvResult.updated} mis à jour
-                        {csvResult.errors.length > 0 && ` · ${csvResult.errors.length} ligne${csvResult.errors.length > 1 ? 's' : ''} ignorée${csvResult.errors.length > 1 ? 's' : ''}`}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '0.75rem' }}>
+                    <div>
+                      <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#6B5D52', display: 'block', marginBottom: '0.3rem' }}>Liste cible</label>
+                      <select
+                        value={csvList}
+                        onChange={e => setCsvList(e.target.value)}
+                        style={{ padding: '0.55rem 0.75rem', border: '1px solid #EAE4D8', background: '#FDFAF5', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: '#5F3636' }}
+                      >
+                        <option value="gaming">Gaming</option>
+                        <option value="evenements">Événements</option>
+                        <option value="kodoro_general">Général Ködörö</option>
+                      </select>
+                      <p style={{ margin: '0.25rem 0 0', fontFamily: "'DM Sans', sans-serif", fontSize: '0.72rem', color: '#9B8F89' }}>
+                        La liste "Inscrits" se remplit automatiquement via les réservations payées.
                       </p>
                     </div>
-                    {csvResult.errors.length > 0 && (
-                      <div style={{ marginTop: '0.5rem', border: '1px solid #EAE4D8', maxHeight: '180px', overflowY: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Mono', monospace", fontSize: '0.72rem' }}>
+                    <div>
+                      <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#6B5D52', display: 'block', marginBottom: '0.3rem' }}>Fichier CSV</label>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.55rem 1rem', background: '#EAE4D8', color: '#5F3636', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', fontWeight: 500 }}>
+                        <Mail size={14} /> Choisir un fichier
+                        <input
+                          type="file"
+                          accept=".csv,text/csv"
+                          onChange={handleCsvFile}
+                          style={{ display: 'none' }}
+                        />
+                      </label>
+                      {csvFileName && (
+                        <p style={{ margin: '0.3rem 0 0', fontFamily: "'DM Mono', monospace", fontSize: '0.7rem', color: '#6B5D52' }}>{csvFileName}</p>
+                      )}
+                    </div>
+                    {csvParsed.length > 0 && !csvResult && (
+                      <button
+                        type="button"
+                        onClick={importCsv}
+                        disabled={csvImporting}
+                        style={{ background: csvImporting ? '#9B8F89' : '#5F3636', color: '#F4EFE4', border: 'none', padding: '0.6rem 1.25rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', fontWeight: 600, cursor: csvImporting ? 'wait' : 'pointer' }}
+                      >
+                        {csvImporting ? 'Import...' : `Importer ${csvParsed.length} contacts`}
+                      </button>
+                    )}
+                  </div>
+
+                  {csvError && (
+                    <div style={{ marginBottom: '0.75rem', padding: '0.75rem 1rem', background: '#FBE9E7', borderLeft: '3px solid #C62828' }}>
+                      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: '#C62828', margin: 0 }}>⚠ {csvError}</p>
+                      <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.7rem', color: '#9B8F89', margin: '0.4rem 0 0' }}>
+                        Colonnes attendues : email, prénom, nom, téléphone (au moins email ou téléphone requis)
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Prévisualisation */}
+                  {csvParsed.length > 0 && csvShowPreview && !csvResult && (
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#2E7D32', margin: '0 0 0.5rem' }}>
+                        ✓ {csvFileName} — {csvParsed.length} contact{csvParsed.length > 1 ? 's' : ''} détecté{csvParsed.length > 1 ? 's' : ''}
+                        {csvParsed[0]?.first_name ? ' · avec prénom' : ''}{csvParsed[0]?.last_name ? ' · avec nom' : ''}
+                      </p>
+                      <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9B8F89', margin: '0 0 0.35rem' }}>Aperçu (5 premières lignes)</p>
+                      <div style={{ overflowX: 'auto', border: '1px solid #EAE4D8' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem' }}>
                           <thead>
                             <tr style={{ background: '#F4EFE4' }}>
-                              <th style={{ textAlign: 'left', padding: '0.35rem 0.75rem', color: '#9B8F89' }}>Email</th>
-                              <th style={{ textAlign: 'left', padding: '0.35rem 0.75rem', color: '#9B8F89' }}>Raison</th>
+                              {['Email', 'Prénom', 'Nom', 'Téléphone'].map(h => (
+                                <th key={h} style={{ textAlign: 'left', padding: '0.3rem 0.75rem', fontFamily: "'DM Mono', monospace", fontSize: '0.58rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9B8F89' }}>{h}</th>
+                              ))}
                             </tr>
                           </thead>
                           <tbody>
-                            {csvResult.errors.map((e, i) => (
-                              <tr key={i} style={{ borderTop: '1px solid #EAE4D8' }}>
-                                <td style={{ padding: '0.35rem 0.75rem', color: '#C62828' }}>{e.email || '(vide)'}</td>
-                                <td style={{ padding: '0.35rem 0.75rem', color: '#6B5D52' }}>{e.reason}</td>
+                            {csvParsed.slice(0, 5).map((r, i) => (
+                              <tr key={i} style={{ borderTop: '1px solid #F4EFE4' }}>
+                                <td style={{ padding: '0.35rem 0.75rem', color: '#5F3636' }}>{r.email || <span style={{ color: '#9B8F89' }}>—</span>}</td>
+                                <td style={{ padding: '0.35rem 0.75rem', color: '#6B5D52' }}>{r.first_name || '—'}</td>
+                                <td style={{ padding: '0.35rem 0.75rem', color: '#6B5D52' }}>{r.last_name || '—'}</td>
+                                <td style={{ padding: '0.35rem 0.75rem', color: '#6B5D52' }}>{r.phone || '—'}</td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
                       </div>
-                    )}
-                  </div>
-                )}
-                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.72rem', color: '#9B8F89', margin: '0.5rem 0 0' }}>
-                  Colonnes reconnues : email (requis), firstname/prénom, lastname/nom, phone/téléphone
-                </p>
+                    </div>
+                  )}
+
+                  {csvResult && (
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <div style={{ padding: '0.75rem 1rem', background: csvResult.errors.length === 0 ? '#E8F5E9' : '#FFF8E1', borderLeft: `3px solid ${csvResult.errors.length === 0 ? '#2E7D32' : '#C9A700'}` }}>
+                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.85rem', color: '#5F3636', margin: '0 0 0.3rem', fontWeight: 600 }}>
+                          Rapport d'import — {csvResult.total ?? 0} lignes lues
+                        </p>
+                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.82rem', color: '#5F3636', margin: 0 }}>
+                          {csvResult.created ?? csvResult.imported ?? 0} créé{(csvResult.created ?? 0) > 1 ? 's' : ''}
+                          {' · '}{csvResult.updated ?? 0} mis à jour
+                          {(csvResult.skipped_unsubscribed ?? 0) > 0 && ` · ${csvResult.skipped_unsubscribed} désinscrits ignorés`}
+                          {(csvResult.skipped_invalid ?? 0) > 0 && ` · ${csvResult.skipped_invalid} invalides`}
+                          {csvResult.errors.length > 0 && ` · ${csvResult.errors.length} erreur${csvResult.errors.length > 1 ? 's' : ''}`}
+                        </p>
+                      </div>
+                      {csvResult.errors.length > 0 && (
+                        <div style={{ marginTop: '0.5rem', border: '1px solid #EAE4D8', maxHeight: '180px', overflowY: 'auto' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Mono', monospace", fontSize: '0.72rem' }}>
+                            <thead>
+                              <tr style={{ background: '#F4EFE4' }}>
+                                <th style={{ textAlign: 'left', padding: '0.35rem 0.75rem', color: '#9B8F89' }}>Contact</th>
+                                <th style={{ textAlign: 'left', padding: '0.35rem 0.75rem', color: '#9B8F89' }}>Raison</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {csvResult.errors.map((e, i) => (
+                                <tr key={i} style={{ borderTop: '1px solid #EAE4D8' }}>
+                                  <td style={{ padding: '0.35rem 0.75rem', color: '#C62828' }}>{e.email || '(vide)'}</td>
+                                  <td style={{ padding: '0.35rem 0.75rem', color: '#6B5D52' }}>{e.reason}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.72rem', color: '#9B8F89', margin: '0.25rem 0 0' }}>
+                    Colonnes reconnues : <code style={{ background: '#F4EFE4', padding: '0 3px' }}>email</code>, <code style={{ background: '#F4EFE4', padding: '0 3px' }}>prénom / firstname</code>, <code style={{ background: '#F4EFE4', padding: '0 3px' }}>nom / lastname</code>, <code style={{ background: '#F4EFE4', padding: '0 3px' }}>téléphone / mobile</code>, <code style={{ background: '#F4EFE4', padding: '0 3px' }}>name / fullname</code>, <code style={{ background: '#F4EFE4', padding: '0 3px' }}>source / campaign</code>
+                  </p>
+                </div>
               </div>
 
               {/* ── Liste de contacts ──────────────────────────────────────── */}
@@ -1135,12 +1253,13 @@ export function OrganizerDashboard() {
                   }}
                   style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.5rem', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: '#C9A700' }}
                 >
-                  <span>Consulter la liste de contacts</span>
+                  <span>Consulter les contacts</span>
                   <span style={{ fontSize: '1rem', color: '#9B8F89' }}>{showContactsList ? '▲' : '▼'}</span>
                 </button>
                 {showContactsList && (
                   <div style={{ padding: '0 1.5rem 1.25rem' }}>
-                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem' }}>
+                    {/* Filtres */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'center', marginBottom: '1rem' }}>
                       <select
                         value={contactsListName}
                         onChange={e => { setContactsListName(e.target.value); fetchContactsList(e.target.value); }}
@@ -1149,19 +1268,55 @@ export function OrganizerDashboard() {
                         <option value="gaming">Gaming</option>
                         <option value="evenements">Événements</option>
                         <option value="kodoro_general">Général Ködörö</option>
+                        <option value="reservations">Inscrits</option>
                       </select>
+                      <input
+                        type="search"
+                        placeholder="Rechercher email ou nom..."
+                        value={contactsSearch}
+                        onChange={e => setContactsSearch(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') fetchContactsList(contactsListName); }}
+                        style={{ padding: '0.5rem 0.75rem', border: '1px solid #EAE4D8', background: '#FDFAF5', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: '#5F3636', minWidth: '200px' }}
+                      />
+                      <select
+                        value={contactsStatusFilter}
+                        onChange={e => { setContactsStatusFilter(e.target.value); fetchContactsList(contactsListName); }}
+                        style={{ padding: '0.5rem 0.75rem', border: '1px solid #EAE4D8', background: '#FDFAF5', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: '#5F3636' }}
+                      >
+                        <option value="all">Tous statuts</option>
+                        <option value="subscribed">Abonnés</option>
+                        <option value="unsubscribed">Désinscrits</option>
+                      </select>
+                      <select
+                        value={contactsSourceFilter}
+                        onChange={e => { setContactsSourceFilter(e.target.value); fetchContactsList(contactsListName); }}
+                        style={{ padding: '0.5rem 0.75rem', border: '1px solid #EAE4D8', background: '#FDFAF5', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: '#5F3636' }}
+                      >
+                        <option value="">Toutes sources</option>
+                        <option value="import">Import CSV</option>
+                        <option value="reservation">Réservation</option>
+                        <option value="manual">Manuel</option>
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => fetchContactsList(contactsListName)}
+                        style={{ padding: '0.5rem 0.75rem', background: '#5F3636', color: '#F4EFE4', border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem' }}
+                      >
+                        Filtrer
+                      </button>
                       <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', color: '#9B8F89' }}>
-                        {contactsList.length} contact{contactsList.length > 1 ? 's' : ''} · {contactsList.filter(c => c.status === 'subscribed').length} abonné{contactsList.filter(c => c.status === 'subscribed').length > 1 ? 's' : ''}
+                        {contactsList.length} contact{contactsList.length !== 1 ? 's' : ''} · {contactsList.filter(c => c.status === 'subscribed').length} abonné{contactsList.filter(c => c.status === 'subscribed').length !== 1 ? 's' : ''}
                       </span>
                     </div>
+
                     {contactsList.length === 0 ? (
-                      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: '#9B8F89', margin: 0 }}>Aucun contact dans cette liste.</p>
+                      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: '#9B8F89', margin: 0 }}>Aucun contact trouvé.</p>
                     ) : (
                       <div style={{ overflowX: 'auto' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Sans', sans-serif", fontSize: '0.82rem' }}>
                           <thead>
                             <tr style={{ borderBottom: '2px solid #EAE4D8' }}>
-                              {['Prénom', 'Nom', 'Email', 'Téléphone', 'Statut', 'Ajouté le'].map(h => (
+                              {['Email', 'Prénom', 'Nom', 'Téléphone', 'Liste', 'Statut', 'Source', 'Ajouté le'].map(h => (
                                 <th key={h} style={{ textAlign: 'left', padding: '0.4rem 0.75rem', fontFamily: "'DM Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9B8F89', whiteSpace: 'nowrap' }}>{h}</th>
                               ))}
                             </tr>
@@ -1169,16 +1324,18 @@ export function OrganizerDashboard() {
                           <tbody>
                             {contactsList.map(c => (
                               <tr key={c.id} style={{ borderBottom: '1px solid #F4EFE4' }}>
+                                <td style={{ padding: '0.5rem 0.75rem', color: '#5F3636' }}>{c.email || <span style={{ color: '#9B8F89' }}>—</span>}</td>
                                 <td style={{ padding: '0.5rem 0.75rem', color: '#5F3636' }}>{c.first_name || '—'}</td>
                                 <td style={{ padding: '0.5rem 0.75rem', color: '#5F3636' }}>{c.last_name || '—'}</td>
-                                <td style={{ padding: '0.5rem 0.75rem', color: '#5F3636' }}>{c.email}</td>
                                 <td style={{ padding: '0.5rem 0.75rem', color: '#6B5D52' }}>{c.phone || '—'}</td>
+                                <td style={{ padding: '0.5rem 0.75rem', color: '#9B8F89', fontFamily: "'DM Mono', monospace", fontSize: '0.7rem' }}>{c.list_name ?? contactsListName}</td>
                                 <td style={{ padding: '0.5rem 0.75rem' }}>
                                   <span style={{ display: 'inline-block', padding: '0.15rem 0.5rem', background: c.status === 'subscribed' ? '#E8F5E9' : '#FBE9E7', color: c.status === 'subscribed' ? '#2E7D32' : '#C62828', fontSize: '0.72rem', fontFamily: "'DM Mono', monospace" }}>
-                                    {c.status === 'subscribed' ? 'abonné' : 'désabonné'}
+                                    {c.status === 'subscribed' ? 'abonné' : 'désinscrit'}
                                   </span>
                                 </td>
-                                <td style={{ padding: '0.5rem 0.75rem', color: '#9B8F89', whiteSpace: 'nowrap' }}>{new Date(c.subscribed_at).toLocaleDateString('fr-FR')}</td>
+                                <td style={{ padding: '0.5rem 0.75rem', color: '#9B8F89', fontFamily: "'DM Mono', monospace", fontSize: '0.7rem' }}>{c.source || '—'}</td>
+                                <td style={{ padding: '0.5rem 0.75rem', color: '#9B8F89', whiteSpace: 'nowrap', fontFamily: "'DM Mono', monospace", fontSize: '0.7rem' }}>{c.subscribed_at ? new Date(c.subscribed_at).toLocaleDateString('fr-FR') : '—'}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -1272,7 +1429,7 @@ export function OrganizerDashboard() {
                     </button>
                     <button
                       type="button"
-                      onClick={sendCampaign}
+                      onClick={() => setShowSendConfirm(true)}
                       disabled={campaignSending || campaignPreviewCount === 0}
                       style={{ flex: 1, background: campaignSending ? '#9B8F89' : '#5F3636', color: '#F4EFE4', border: 'none', padding: '0.65rem 1.25rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', fontWeight: 600, cursor: campaignSending ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
                     >
@@ -1294,11 +1451,12 @@ export function OrganizerDashboard() {
                     <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.58rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C9A700', margin: '0 0 0.75rem' }}>Bonnes pratiques</p>
                     {[
                       'Sujet clair, sans majuscules agressives',
+                      'Message court et direct',
                       'Peu de liens (1-2 max)',
                       'Pas de pièce jointe',
-                      'Adresse cohérente avec la liste',
                       'Ne pas envoyer plus d\'1 fois/semaine',
                       'Le lien de désinscription est auto-ajouté',
+                      'Faire un test avant tout envoi important',
                     ].map(tip => (
                       <p key={tip} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#6B5D52', margin: '0 0 0.4rem', paddingLeft: '0.75rem', borderLeft: '2px solid #EAE4D8' }}>{tip}</p>
                     ))}
@@ -1307,7 +1465,7 @@ export function OrganizerDashboard() {
                   {/* Historique campagnes */}
                   {campaigns.length > 0 && (
                     <div style={{ background: '#fff', border: '1px solid rgba(95,54,54,0.08)', padding: '1rem 1.25rem' }}>
-                      <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.58rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C9A700', margin: '0 0 0.75rem' }}>Historique</p>
+                      <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.58rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C9A700', margin: '0 0 0.75rem' }}>Historique (5 dernières)</p>
                       {campaigns.slice(0, 5).map(c => (
                         <div key={c.id} style={{ borderBottom: '1px solid #F4EFE4', paddingBottom: '0.5rem', marginBottom: '0.5rem' }}>
                           <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.82rem', color: '#5F3636', margin: '0 0 0.15rem', fontWeight: 500 }}>{c.subject}</p>
@@ -1562,6 +1720,51 @@ export function OrganizerDashboard() {
           </>
         )}
       </div>
+      {/* Modal confirmation envoi campagne */}
+      {showSendConfirm && (() => {
+        const LIST_OPTIONS_MODAL = [
+          { value: 'reservations',   label: 'Inscrits (réservations payées)', sender: 'gaming@espace-kodoro.fr' },
+          { value: 'gaming',         label: 'Gaming (opt-in)',                 sender: 'gaming@espace-kodoro.fr' },
+          { value: 'evenements',     label: 'Événements',                      sender: 'evenements@espace-kodoro.fr' },
+          { value: 'kodoro_general', label: 'Général Ködörö',                  sender: 'evenements@espace-kodoro.fr' },
+        ];
+        const ml = LIST_OPTIONS_MODAL.find(l => l.value === campaignForm.list_name) ?? LIST_OPTIONS_MODAL[0];
+        const preview = campaignForm.html_content.replace(/<[^>]+>/g, '').slice(0, 200);
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+            <div style={{ background: '#fff', maxWidth: 480, width: '100%', padding: '2rem', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+              <h3 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.2rem', fontWeight: 700, color: '#5F3636', margin: '0 0 1.25rem' }}>Confirmer l'envoi</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1.25rem' }}>
+                {[
+                  { label: 'Liste', value: ml.label },
+                  { label: 'Destinataires', value: `${campaignPreviewCount ?? '?'} contacts abonnés` },
+                  { label: 'Expéditeur', value: ml.sender },
+                  { label: 'Sujet', value: campaignForm.subject || '(vide)' },
+                ].map(row => (
+                  <div key={row.label} style={{ display: 'flex', gap: '0.5rem' }}>
+                    <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', color: '#9B8F89', textTransform: 'uppercase', letterSpacing: '0.06em', minWidth: '100px', paddingTop: '0.15rem' }}>{row.label}</span>
+                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.88rem', color: '#5F3636', fontWeight: 500 }}>{row.value}</span>
+                  </div>
+                ))}
+                {preview && (
+                  <div style={{ marginTop: '0.25rem', padding: '0.6rem 0.75rem', background: '#F4EFE4', borderLeft: '3px solid #EAE4D8' }}>
+                    <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.58rem', color: '#9B8F89', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 0.3rem' }}>Aperçu message</p>
+                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.82rem', color: '#6B5D52', margin: 0, lineHeight: 1.5 }}>{preview}{campaignForm.html_content.length > 200 ? '…' : ''}</p>
+                  </div>
+                )}
+              </div>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#9B8F89', margin: '0 0 1.25rem' }}>
+                Les emails sont envoyés individuellement aux contacts abonnés. Les contacts désinscrits sont exclus. Cette action est irréversible.
+              </p>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button onClick={() => setShowSendConfirm(false)} style={{ flex: 1, padding: '0.7rem', border: '1px solid #EAE4D8', background: '#F4EFE4', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: '#5F3636' }}>Annuler</button>
+                <button onClick={() => { setShowSendConfirm(false); sendCampaign(); }} style={{ flex: 1, padding: '0.7rem', background: '#5F3636', color: '#F4EFE4', border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', fontWeight: 600 }}>Confirmer l'envoi</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Modal création événement */}
       {showForm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(95,54,54,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 100 }}
