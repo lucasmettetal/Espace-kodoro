@@ -158,26 +158,13 @@ export async function onRequestPost({ request, env }) {
     return Response.json({ error: `Resend error: ${err}` }, { status: 500, headers: cors });
   }
 
-  // Récupérer les destinataires selon la liste
-  let contacts;
-  if (list_name === 'reservations') {
-    // Directement depuis la table reservations (tous les payés, sans opt-in requis)
-    const { results } = await env.DB.prepare(`
-      SELECT id, email, customer_name AS first_name, NULL AS unsubscribe_token
-      FROM reservations
-      WHERE status = 'paid'
-      GROUP BY email
-    `).all();
-    contacts = results;
-  } else {
-    const { results } = await env.DB.prepare(`
-      SELECT c.id, c.email, c.first_name, cs.unsubscribe_token
-      FROM contacts c
-      JOIN contact_subscriptions cs ON cs.contact_id = c.id
-      WHERE cs.list_name = ? AND cs.status = 'subscribed'
-    `).bind(list_name).all();
-    contacts = results;
-  }
+  // Récupérer les destinataires — toutes les listes passent par contact_subscriptions
+  const { results: contacts } = await env.DB.prepare(`
+    SELECT c.id, c.email, c.first_name, cs.unsubscribe_token
+    FROM contacts c
+    JOIN contact_subscriptions cs ON cs.contact_id = c.id
+    WHERE cs.list_name = ? AND cs.status = 'subscribed' AND c.email IS NOT NULL
+  `).bind(list_name).all();
 
   if (contacts.length === 0) {
     return Response.json({ error: 'Aucun destinataire trouvé pour cette liste' }, { status: 400, headers: cors });
@@ -200,7 +187,7 @@ export async function onRequestPost({ request, env }) {
   // Construire le HTML final avec template branded + footer désinscription
   function buildHtml(contact) {
     let unsubHtml = '';
-    if (list_name !== 'reservations' && contact.unsubscribe_token) {
+    if (contact.unsubscribe_token) {
       const unsubLink = `${siteUrl}/api/unsubscribe?t=${encodeURIComponent(contact.unsubscribe_token)}&l=${encodeURIComponent(list_name)}`;
       unsubHtml = `<p style="margin:12px 0 0;font-size:11px;color:#bbb;line-height:1.5;">
         Vous recevez cet email car vous êtes inscrit(e) aux ${unsubLabel} de l'Espace Ködörö.<br>

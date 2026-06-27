@@ -339,12 +339,18 @@ export async function onRequestPost({ request, env }) {
           break;
         }
 
-        // Marquer la réservation comme payée
-        await env.DB.prepare(`
+        // Marquer la réservation comme payée — idempotent via WHERE status='pending'
+        const updateResult = await env.DB.prepare(`
           UPDATE reservations
           SET status = 'paid', stripe_payment_intent = ?, amount_cents = ?, updated_at = datetime('now')
           WHERE id = ? AND status = 'pending'
         `).bind(session.payment_intent ?? null, session.amount_total ?? null, reservationId).run();
+
+        // Webhook relivré : réservation déjà traitée → on s'arrête ici
+        if (!updateResult.meta.changes) {
+          console.log(`[stripe-webhook] Réservation ${reservationId} déjà traitée — webhook ignoré.`);
+          break;
+        }
 
         console.log(`[stripe-webhook] Réservation ${reservationId} marquée paid.`);
 
@@ -358,12 +364,24 @@ export async function onRequestPost({ request, env }) {
             'SELECT full_name, is_minor, age FROM participants WHERE reservation_id = ?'
           ).bind(reservationId).all();
 
-          // Upsert contact + abonnement gaming si consentement donné
+          const firstName = reservation.customer_name?.split(' ')[0] ?? null;
+          const lastName  = reservation.customer_name?.split(' ').slice(1).join(' ') || null;
+
+          // Abonnement "reservations" systématique (opt-out disponible pour les campagnes)
+          await upsertContact(env, {
+            email:      reservation.email,
+            first_name: firstName,
+            last_name:  lastName,
+            phone:      reservation.phone ?? null,
+            list_name:  'reservations',
+          });
+
+          // Abonnement "gaming" en plus si consentement newsletter
           if (reservation.newsletter_consent) {
             await upsertContact(env, {
               email:      reservation.email,
-              first_name: reservation.customer_name?.split(' ')[0] ?? null,
-              last_name:  reservation.customer_name?.split(' ').slice(1).join(' ') || null,
+              first_name: firstName,
+              last_name:  lastName,
               phone:      reservation.phone ?? null,
               list_name:  'gaming',
             });
