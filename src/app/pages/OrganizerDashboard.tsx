@@ -1195,17 +1195,19 @@ export function OrganizerDashboard() {
                   </div>
 
                   <div>
-                    <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#6B5D52', display: 'block', marginBottom: '0.3rem' }}>Contenu HTML *</label>
+                    <label style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.78rem', color: '#6B5D52', display: 'block', marginBottom: '0.3rem' }}>Message *</label>
                     <textarea
                       rows={12}
-                      placeholder={'<p>Bonjour,</p>\n<p>La prochaine soirée gaming est...</p>'}
+                      placeholder={'Bonjour à tous,\n\nMerci d\'être venus hier soir ! La prochaine soirée gaming aura lieu...\n\nÀ très bientôt,\nLucas — Espace Ködörö'}
                       value={campaignForm.html_content}
                       onChange={e => setCampaignForm(f => ({ ...f, html_content: e.target.value }))}
-                      style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #EAE4D8', background: '#FDFAF5', fontFamily: "'DM Mono', monospace", fontSize: '0.8rem', color: '#5F3636', boxSizing: 'border-box', resize: 'vertical' }}
+                      style={{ width: '100%', padding: '0.75rem', border: '1px solid #EAE4D8', background: '#FDFAF5', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#5F3636', boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.6 }}
                     />
-                    <p style={{ margin: '0.4rem 0 0', fontFamily: "'DM Sans', sans-serif", fontSize: '0.72rem', color: '#9B8F89' }}>
-                      Un footer de désinscription sera ajouté automatiquement à chaque email.
-                    </p>
+                    <div style={{ marginTop: '0.5rem', padding: '0.6rem 0.75rem', background: '#FBF7EF', border: '1px solid rgba(201,167,0,0.2)' }}>
+                      <p style={{ margin: 0, fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', color: '#7A6200' }}>
+                        ✦ Écris ton message en texte simple — la mise en page Espace Ködörö est appliquée automatiquement. Saute une ligne entre chaque paragraphe. Tu peux aussi utiliser <code style={{ background: 'rgba(0,0,0,0.06)', padding: '0 3px' }}>&lt;b&gt;</code>, <code style={{ background: 'rgba(0,0,0,0.06)', padding: '0 3px' }}>&lt;a href="..."&gt;</code> si besoin.
+                      </p>
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', gap: '0.75rem' }}>

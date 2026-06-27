@@ -24,6 +24,53 @@ const UNSUB_LABELS = {
   reservations:   'soirées gaming',
 };
 
+// ── Template email branded ────────────────────────────────────────────────────
+function wrapInTemplate({ content, subject, siteUrl, unsubHtml }) {
+  // Convertit le texte brut (sauts de ligne) en paragraphes HTML si nécessaire
+  const body = content.includes('<') ? content
+    : content.split(/\n{2,}/).map(p => `<p style="margin:0 0 1rem;color:#6B5D52;font-size:0.95rem;line-height:1.75;">${p.replace(/\n/g, '<br>')}</p>`).join('');
+
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${subject}</title></head>
+<body style="margin:0;padding:0;background:#F4EFE4;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F4EFE4;padding:2rem 1rem;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border:1px solid rgba(95,54,54,0.12);">
+
+        <tr>
+          <td style="background:#5F3636;padding:1.5rem 2rem;text-align:center;">
+            <p style="margin:0 0 0.2rem;font-size:0.65rem;letter-spacing:0.14em;text-transform:uppercase;color:rgba(244,239,228,0.55);">Espace Ködörö · Caussade</p>
+            <p style="margin:0;font-size:1.1rem;font-weight:700;color:#F4EFE4;letter-spacing:-0.01em;">${subject}</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:2rem;">
+            ${body}
+          </td>
+        </tr>
+
+        <tr>
+          <td style="background:#F4EFE4;padding:1.25rem 2rem;text-align:center;border-top:1px solid rgba(95,54,54,0.08);">
+            <p style="margin:0 0 0.5rem;font-size:0.7rem;color:#9B8F89;">
+              Espace Ködörö · 25 boulevard Didier Rey · 82300 Caussade
+            </p>
+            <p style="margin:0;font-size:0.7rem;color:#9B8F89;">
+              <a href="${siteUrl}" style="color:#9B8F89;text-decoration:none;">espace-kodoro.fr</a>
+            </p>
+            ${unsubHtml}
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
 export async function onRequestOptions() {
   return new Response(null, { status: 204, headers: cors });
 }
@@ -103,21 +150,17 @@ export async function onRequestPost({ request, env }) {
   const campaignId = meta.last_row_id;
   const unsubLabel = UNSUB_LABELS[list_name] ?? 'nos communications';
 
-  // Construire le HTML final avec footer de désinscription
+  // Construire le HTML final avec template branded + footer désinscription
   function buildHtml(contact) {
-    let footer = '';
+    let unsubHtml = '';
     if (list_name !== 'reservations' && contact.unsubscribe_token) {
       const unsubLink = `${siteUrl}/api/unsubscribe?t=${encodeURIComponent(contact.unsubscribe_token)}&l=${encodeURIComponent(list_name)}`;
-      footer = `
-        <div style="margin-top:2rem;padding-top:1rem;border-top:1px solid #eee;font-size:0.75rem;color:#999;font-family:Arial,sans-serif;text-align:center;">
-          Vous recevez cet email car vous êtes inscrit(e) aux ${unsubLabel} de l'Espace Ködörö.<br>
-          <a href="${unsubLink}" style="color:#999;">Se désinscrire</a>
-        </div>`;
+      unsubHtml = `<p style="margin:0.5rem 0 0;font-size:0.7rem;color:#9B8F89;">
+        Vous recevez cet email car vous êtes inscrit(e) aux ${unsubLabel} de l'Espace Ködörö. ·
+        <a href="${unsubLink}" style="color:#9B8F89;">Se désinscrire</a>
+      </p>`;
     }
-    if (!footer) return html_content;
-    return html_content.includes('</body>')
-      ? html_content.replace('</body>', `${footer}</body>`)
-      : html_content + footer;
+    return wrapInTemplate({ content: html_content, subject, siteUrl, unsubHtml });
   }
 
   // ── Envoi en batch (100 max par appel Resend) ─────────────────────────────
