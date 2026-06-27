@@ -1,4 +1,4 @@
-import { hashPassword, signJWT } from '../_auth.js';
+import { verifyPassword, signJWT } from '../_auth.js';
 
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, Authorization' };
 
@@ -13,12 +13,12 @@ export async function onRequestPost({ request, env }) {
     return Response.json({ error: 'Email et mot de passe requis' }, { status: 400, headers: cors });
   }
 
-  const hash = await hashPassword(password);
   const organizer = await env.DB.prepare(
-    'SELECT * FROM organizers WHERE email = ? AND password_hash = ?'
-  ).bind(email.toLowerCase(), hash).first();
+    'SELECT * FROM organizers WHERE email = ?'
+  ).bind(email.toLowerCase()).first();
 
-  if (!organizer) {
+  const passwordOk = organizer && await verifyPassword(password, organizer.password_hash);
+  if (!passwordOk) {
     return Response.json({ error: 'Email ou mot de passe incorrect' }, { status: 401, headers: cors });
   }
 

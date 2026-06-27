@@ -5,13 +5,53 @@ function bufToBase64(buf) {
   return btoa(binary);
 }
 
-const getSecret = (env) => env?.JWT_SECRET ?? 'kodoro-jwt-secret-dev';
+const getSecret = (env) => {
+  if (!env?.JWT_SECRET) throw new Error('JWT_SECRET non configuré');
+  return env.JWT_SECRET;
+};
 
+// hashPassword : PBKDF2-SHA256, 100 000 itérations, sel aléatoire 16 octets.
+// Format stocké en base : "<sel_hex>:<hash_hex>"
+// Remplace l'ancien SHA-256 sans sel (vulnérable aux rainbow tables).
 export async function hashPassword(password) {
   const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hash = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', hash: 'SHA-256', salt, iterations: 100000 },
+    keyMaterial, 256
+  );
+  const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
+  const hashHex = Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2, '0')).join('');
+  return `${saltHex}:${hashHex}`;
+}
+
+// verifyPassword : compare un mot de passe en clair avec un hash stocké.
+// Compatible avec le nouveau format PBKDF2 "<sel>:<hash>".
+export async function verifyPassword(password, stored) {
+  // Ancien format SHA-256 sans sel (32 octets hex = 64 chars, sans ':')
+  if (!stored.includes(':')) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    const hex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+    return hex === stored;
+  }
+  // Nouveau format PBKDF2
+  const [saltHex, hashHex] = stored.split(':');
+  const salt = new Uint8Array(saltHex.match(/.{2}/g).map(h => parseInt(h, 16)));
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', hash: 'SHA-256', salt, iterations: 100000 },
+    keyMaterial, 256
+  );
+  const computed = Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2, '0')).join('');
+  return computed === hashHex;
 }
 
 async function getKey(usage, env) {

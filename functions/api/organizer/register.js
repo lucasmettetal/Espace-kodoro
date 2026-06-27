@@ -9,6 +9,8 @@ export async function onRequestOptions() {
 export async function onRequestPost({ request, env }) {
   const payload = await requireAuth(request, env);
   if (!payload) return Response.json({ error: 'Non autorisé' }, { status: 401, headers: cors });
+  // Seul un administrateur peut créer de nouveaux comptes organisateur.
+  if (!payload.is_admin) return Response.json({ error: 'Accès réservé aux administrateurs' }, { status: 403, headers: cors });
 
   const { name, email, password } = await request.json();
 

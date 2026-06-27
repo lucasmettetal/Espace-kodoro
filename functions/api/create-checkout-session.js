@@ -241,8 +241,11 @@ export async function onRequestPost({ request, env }) {
     if (!priorVisit) {
       let firstVisitReservationId;
       try {
+        // INSERT OR IGNORE : si deux requêtes simultanées arrivent pour le même
+        // email + event (race condition), la contrainte UNIQUE partielle
+        // idx_reservations_first_visit_unique bloque le doublon silencieusement.
         const result = await env.DB.prepare(`
-          INSERT INTO reservations
+          INSERT OR IGNORE INTO reservations
             (event_id, customer_name, email, phone, quantity, status,
              amount_cents, utm_source, utm_medium, utm_campaign,
              utm_content, utm_term, referrer, landing_page, comment,
@@ -255,6 +258,13 @@ export async function onRequestPost({ request, env }) {
           comment?.trim() || null, newsletter_consent ? 1 : 0,
         ).run();
         firstVisitReservationId = result.meta.last_row_id;
+        // Si last_row_id est 0, l'INSERT a été ignoré (doublon) — retourner quand même succès
+        if (!firstVisitReservationId) {
+          const existing = await env.DB.prepare(
+            `SELECT id FROM reservations WHERE email = ? AND event_id = ? AND payment_type = 'first_visit' AND status = 'paid' LIMIT 1`
+          ).bind(normalizedEmail, event_id).first();
+          firstVisitReservationId = existing?.id;
+        }
       } catch (err) {
         console.error('[create-checkout] DB insert first_visit reservation:', err);
         return Response.json({ error: 'Erreur lors de la création de la réservation' }, { status: 500, headers: cors });
@@ -284,8 +294,10 @@ export async function onRequestPost({ request, env }) {
   if (activePass) {
     let passReservationId;
     try {
+      // INSERT OR IGNORE : protège contre la race condition sur le chemin pass_included
+      // (contrainte UNIQUE partielle idx_reservations_pass_unique).
       const reservationResult = await env.DB.prepare(`
-        INSERT INTO reservations
+        INSERT OR IGNORE INTO reservations
           (event_id, customer_name, email, phone, quantity, status,
            amount_cents, utm_source, utm_medium, utm_campaign,
            utm_content, utm_term, referrer, landing_page, comment,
