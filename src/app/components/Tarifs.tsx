@@ -39,6 +39,24 @@ const plans = [
     highlight: true,
   },
   {
+    id: 'bureau',
+    label: 'Location',
+    name: 'Bureau privé',
+    price: '60',
+    unit: '/ jour',
+    description: 'Un espace de travail privatif pour travailler, recevoir des clients ou tenir des rendez-vous professionnels.',
+    features: [
+      'Bureau privé et fermé',
+      'Wifi haut débit',
+      'Accès cuisine & toilettes',
+      'Parking disponible',
+      'Disponible à la journée',
+      'Nettoyage inclus',
+    ],
+    cta: 'Demander un devis',
+    highlight: false,
+  },
+  {
     id: 'zen',
     label: 'Cabinet Zen',
     name: 'Thérapeute',
@@ -99,7 +117,7 @@ export function Tarifs() {
             display: 'grid',
             gap: '2px',
           }}
-          className="grid-cols-3 max-lg:grid-cols-1"
+          className="grid-cols-2 max-md:grid-cols-1"
         >
           {plans.map((plan) => (
             <div
