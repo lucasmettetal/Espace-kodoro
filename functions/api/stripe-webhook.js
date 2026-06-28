@@ -120,7 +120,7 @@ function buildConfirmationEmail({ customerName, quantity, participants, eventDat
 
             <p style="margin:0 0 1.5rem;color:#6B5D52;font-size:0.875rem;line-height:1.75;">
               Une question ? Contactez-nous à
-              <a href="mailto:espacekodoro@gmail.com" style="color:#5F3636;">espacekodoro@gmail.com</a>
+              <a href="mailto:gaming.kodoro@gmail.com" style="color:#5F3636;">gaming.kodoro@gmail.com</a>
             </p>
 
             <p style="margin:0;color:#6B5D52;font-size:0.875rem;">
@@ -178,7 +178,7 @@ async function sendConfirmationEmail({ env, to, customerName, reservation, parti
     },
     body: JSON.stringify({
       from,
-      reply_to: env.EMAIL_REPLY_TO ?? 'espacekodoro@gmail.com',
+      reply_to: env.EMAIL_REPLY_TO ?? 'gaming.kodoro@gmail.com',
       to:      [to],
       subject: `Réservation confirmée — Soirée Gaming du 26 juin · Espace Ködörö`,
       html,
@@ -235,7 +235,7 @@ async function sendPassConfirmationEmail(env, { to, customerName, expiresAt }) {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, reply_to: env.EMAIL_REPLY_TO ?? 'espacekodoro@gmail.com', to: [to], subject: 'Votre Pass Gaming est actif 🎮', html }),
+      body: JSON.stringify({ from, reply_to: env.EMAIL_REPLY_TO ?? 'gaming.kodoro@gmail.com', to: [to], subject: 'Votre Pass Gaming est actif 🎮', html }),
     });
     if (!res.ok) {
       const err = await res.text();

@@ -186,7 +186,7 @@ export async function onRequestPost({ request, env }) {
       <li>Les mineurs de moins de 15 ans doivent être accompagnés d'un adulte</li>
     </ul>
   </td></tr></table>
-  <p style="margin:0 0 1.5rem;color:#6B5D52;font-size:0.875rem;line-height:1.75;">Une question ? Contactez-nous à <a href="mailto:espacekodoro@gmail.com" style="color:#5F3636;">espacekodoro@gmail.com</a></p>
+  <p style="margin:0 0 1.5rem;color:#6B5D52;font-size:0.875rem;line-height:1.75;">Une question ? Contactez-nous à <a href="mailto:gaming.kodoro@gmail.com" style="color:#5F3636;">gaming.kodoro@gmail.com</a></p>
   <p style="margin:0;color:#6B5D52;font-size:0.875rem;">À très bientôt,<br><strong style="color:#5F3636;">L'équipe de l'Espace Ködörö</strong></p>
 </td></tr>
 <tr><td style="background:#F4EFE4;padding:1.25rem;text-align:center;border-top:1px solid rgba(95,54,54,0.08);">
@@ -200,7 +200,7 @@ export async function onRequestPost({ request, env }) {
         headers: { 'Authorization': `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           from,
-          reply_to: env.EMAIL_REPLY_TO ?? 'espacekodoro@gmail.com',
+          reply_to: env.EMAIL_REPLY_TO ?? 'gaming.kodoro@gmail.com',
           to: [email],
           subject: `Réservation confirmée — Soirée Gaming du 26 juin · Espace Ködörö`,
           html,

@@ -61,7 +61,7 @@ export async function onRequestPost({ request, env, params }) {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, reply_to: env.EMAIL_REPLY_TO ?? 'espacekodoro@gmail.com', to: [pass.email], subject: 'Votre Pass Gaming arrive bientôt à expiration', html }),
+      body: JSON.stringify({ from, reply_to: env.EMAIL_REPLY_TO ?? 'gaming.kodoro@gmail.com', to: [pass.email], subject: 'Votre Pass Gaming arrive bientôt à expiration', html }),
     });
 
     if (!res.ok) {

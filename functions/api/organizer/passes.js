@@ -56,7 +56,7 @@ async function sendPassConfirmationEmail(env, { to, customerName, expiresAt }) {
     await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, reply_to: env.EMAIL_REPLY_TO ?? 'espacekodoro@gmail.com', to: [to], subject: 'Votre Pass Gaming est actif 🎮', html }),
+      body: JSON.stringify({ from, reply_to: env.EMAIL_REPLY_TO ?? 'gaming.kodoro@gmail.com', to: [to], subject: 'Votre Pass Gaming est actif 🎮', html }),
     });
   } catch (err) {
     console.error('[organizer/passes] sendPassConfirmationEmail:', err);
