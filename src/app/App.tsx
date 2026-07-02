@@ -6,6 +6,7 @@ import { Services } from './components/Services';
 import { Spaces } from './components/Spaces';
 import { Therapists } from './components/Therapists';
 import { ActivitiesHighlight } from './components/ActivitiesHighlight';
+import { LobbyBanner } from './components/LobbyBanner';
 import { Events } from './components/Events';
 import { Tarifs } from './components/Tarifs';
 import { Contact } from './components/Contact';
@@ -31,6 +32,7 @@ function Home() {
       <Services />
       <Spaces />
       <Therapists />
+      <LobbyBanner />
       <ActivitiesHighlight />
       <Events />
       <Tarifs />
