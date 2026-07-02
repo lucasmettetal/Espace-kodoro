@@ -26,7 +26,16 @@ const UNSUB_LABELS = {
 
 // ── Template email branded ────────────────────────────────────────────────────
 function wrapInTemplate({ content, subject, siteUrl, unsubHtml }) {
-  // Convertit le texte brut en HTML propre si pas de balises
+  const P  = 'margin:0 0 20px;color:#2d1a1a;font-size:16px;line-height:1.85;';
+  const LI = 'margin-bottom:8px;color:#2d1a1a;font-size:16px;line-height:1.8;';
+
+  // Auto-convertit les URLs en liens stylisés or
+  function linkify(text) {
+    return text.replace(/(https?:\/\/[^\s<>"]+)/g, (url) =>
+      `<a href="${url}" style="color:#c9a700;text-decoration:none;font-weight:600;">${url.replace(/^https?:\/\//, '')}</a>`
+    );
+  }
+
   const body = content.includes('<')
     ? content
     : content
@@ -34,17 +43,19 @@ function wrapInTemplate({ content, subject, siteUrl, unsubHtml }) {
         .map(block => {
           const trimmed = block.trim();
           if (!trimmed) return '';
-          // Détecter les listes numérotées (1. texte)
           if (/^\d+\.\s/.test(trimmed)) {
             const items = trimmed.split(/\n/).filter(l => l.trim());
-            return `<ol style="margin:0 0 1.25rem;padding-left:1.5rem;">${items.map(li => `<li style="margin-bottom:0.4rem;color:#333;font-size:15px;line-height:1.7;">${li.replace(/^\d+\.\s*/, '')}</li>`).join('')}</ol>`;
+            return `<ol style="margin:0 0 24px;padding-left:20px;">${items.map(li =>
+              `<li style="${LI}">${linkify(li.replace(/^\d+\.\s*/, ''))}</li>`
+            ).join('')}</ol>`;
           }
-          // Détecter les listes à tirets
           if (/^[-•]\s/.test(trimmed)) {
             const items = trimmed.split(/\n/).filter(l => l.trim());
-            return `<ul style="margin:0 0 1.25rem;padding-left:1.5rem;">${items.map(li => `<li style="margin-bottom:0.4rem;color:#333;font-size:15px;line-height:1.7;">${li.replace(/^[-•]\s*/, '')}</li>`).join('')}</ul>`;
+            return `<ul style="margin:0 0 24px;padding-left:20px;">${items.map(li =>
+              `<li style="${LI}">${linkify(li.replace(/^[-•]\s*/, ''))}</li>`
+            ).join('')}</ul>`;
           }
-          return `<p style="margin:0 0 1.25rem;color:#333;font-size:15px;line-height:1.75;">${trimmed.replace(/\n/g, '<br>')}</p>`;
+          return `<p style="${P}">${linkify(trimmed.replace(/\n/g, '<br>'))}</p>`;
         })
         .join('');
 
@@ -53,39 +64,48 @@ function wrapInTemplate({ content, subject, siteUrl, unsubHtml }) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="format-detection" content="telephone=no,date=no,email=no,address=no">
   <title>${subject}</title>
+  <style>
+    a { color: #c9a700 !important; text-decoration: none !important; }
+    a:hover { text-decoration: underline !important; }
+  </style>
 </head>
-<body style="margin:0;padding:0;background:#f0ebe3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#f0ebe3;padding:32px 16px;">
+<body style="margin:0;padding:0;background:#ede8e0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%;mso-line-height-rule:exactly;">
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ede8e0;padding:48px 16px;">
     <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" role="presentation" style="max-width:600px;width:100%;">
+      <table role="presentation" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
 
         <!-- Header -->
         <tr>
-          <td style="background:#3d1f1f;padding:28px 40px;text-align:center;border-radius:4px 4px 0 0;">
-            <p style="margin:0 0 6px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.45);font-weight:500;">Espace Ködörö · Caussade</p>
-            <p style="margin:0;font-size:20px;font-weight:700;color:#ffffff;line-height:1.3;">${subject.replace(/^\[TEST\]\s*/, '')}</p>
+          <td style="background:#241010;padding:40px 48px 36px;text-align:center;border-radius:8px 8px 0 0;">
+            <p style="margin:0 0 10px;font-size:10px;letter-spacing:4px;text-transform:uppercase;color:rgba(201,167,0,0.6);font-weight:600;">Espace Ködörö &nbsp;·&nbsp; Caussade</p>
+            <p style="margin:0;font-size:24px;font-weight:700;color:#ffffff;line-height:1.3;letter-spacing:-0.02em;">${subject.replace(/^\[TEST\]\s*/, '')}</p>
           </td>
         </tr>
 
-        <!-- Accent bar -->
-        <tr><td style="background:#c9a700;height:3px;font-size:0;line-height:0;">&nbsp;</td></tr>
+        <!-- Accent bar dégradé -->
+        <tr><td style="background:linear-gradient(90deg,#9a7a00,#e2c22e,#9a7a00);height:3px;font-size:0;line-height:0;"></td></tr>
 
         <!-- Body -->
         <tr>
-          <td style="background:#ffffff;padding:36px 40px 28px;">
+          <td style="background:#ffffff;padding:44px 48px 36px;border-radius:0;">
             ${body}
           </td>
         </tr>
 
+        <!-- Séparateur -->
+        <tr><td style="background:#ffffff;padding:0 48px;"><div style="height:1px;background:#ede8e0;"></div></td></tr>
+
         <!-- Footer -->
         <tr>
-          <td style="background:#f7f3ed;padding:20px 40px;text-align:center;border-top:1px solid #e8e0d5;border-radius:0 0 4px 4px;">
-            <p style="margin:0 0 4px;font-size:12px;color:#999;line-height:1.5;">
+          <td style="background:#ffffff;padding:24px 48px 32px;text-align:center;border-radius:0 0 8px 8px;">
+            <p style="margin:0 0 4px;font-size:12px;color:#b0a090;line-height:1.6;letter-spacing:0.02em;">
               Espace Ködörö · 25 boulevard Didier Rey · 82300 Caussade
             </p>
-            <p style="margin:0;font-size:12px;color:#999;">
-              <a href="${siteUrl}" style="color:#999;text-decoration:underline;">espace-kodoro.fr</a>
+            <p style="margin:0;font-size:12px;color:#b0a090;">
+              <a href="${siteUrl}" style="color:#b0a090 !important;text-decoration:underline !important;">espace-kodoro.fr</a>
             </p>
             ${unsubHtml}
           </td>
