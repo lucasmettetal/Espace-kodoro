@@ -115,7 +115,8 @@ export function GamingPage() {
         }}
       >
         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 70% 50%, rgba(201,167,0,0.08) 0%, transparent 60%)', pointerEvents: 'none' }} />
-        <div style={{ maxWidth: 1280, margin: '0 auto', position: 'relative', zIndex: 1 }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', position: 'relative', zIndex: 1, display: 'grid', gap: '2.5rem', alignItems: 'center' }} className="grid-cols-1 lg:grid-cols-[1fr_auto]">
+         <div>
           <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.7rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#C9A700', marginBottom: '1.25rem' }}>
             Activité régulière — Espace Ködörö
           </p>
@@ -171,6 +172,17 @@ export function GamingPage() {
               Discord
             </a>
           </div>
+         </div>{/* fin colonne contenu */}
+
+         {/* Logo Le Lobby */}
+         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+           <img
+             src="/gaming.jpg"
+             alt="Le Lobby"
+             style={{ width: 'clamp(180px, 20vw, 280px)', height: 'clamp(180px, 20vw, 280px)', objectFit: 'contain', borderRadius: '50%', display: 'block' }}
+           />
+         </div>
+
         </div>
       </section>
 

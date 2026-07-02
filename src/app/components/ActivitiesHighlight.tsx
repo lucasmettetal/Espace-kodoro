@@ -168,14 +168,13 @@ export function ActivitiesHighlight() {
               </div>
             </div>
 
-            {/* Badge tarif */}
-            <div style={{ textAlign: 'center', padding: '1.5rem', border: '1px solid rgba(201,167,0,0.2)', background: 'rgba(201,167,0,0.05)', alignSelf: 'start', minWidth: 140 }}>
-              <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.55rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(201,167,0,0.6)', margin: '0 0 0.5rem' }}>Entrée</p>
-              <p style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '2rem', fontWeight: 700, color: '#C9A700', margin: '0 0 0.25rem', lineHeight: 1 }}>5 €</p>
-              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', color: 'rgba(244,239,228,0.4)', margin: '0 0 1rem', lineHeight: 1.5 }}>par soirée</p>
-              <div style={{ height: '1px', background: 'rgba(201,167,0,0.15)', marginBottom: '1rem' }} />
-              <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.55rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(201,167,0,0.6)', margin: '0 0 0.5rem' }}>Première fois</p>
-              <p style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '1.5rem', fontWeight: 700, color: '#81C784', margin: 0, lineHeight: 1 }}>Offerte</p>
+            {/* Logo Le Lobby */}
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', alignSelf: 'center' }}>
+              <img
+                src="/gaming.jpg"
+                alt="Le Lobby"
+                style={{ width: 'clamp(140px, 18vw, 220px)', height: 'clamp(140px, 18vw, 220px)', objectFit: 'contain', borderRadius: '50%', display: 'block' }}
+              />
             </div>
 
           </div>
