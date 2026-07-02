@@ -48,7 +48,14 @@ async function getOrCreateGamingEvent(env) {
     ORDER BY event_date ASC LIMIT 1
   `).first();
 
-  if (existing) return existing;
+  if (existing) {
+    // Migration silencieuse : end_time 23:00 → 00:00
+    if (existing.end_time === '23:00') {
+      await env.DB.prepare("UPDATE events SET end_time = '00:00' WHERE id = ?").bind(existing.id).run();
+      existing.end_time = '00:00';
+    }
+    return existing;
+  }
 
   // 2. Aucun futur → archiver tous les événements gaming passés
   await env.DB.prepare(`
@@ -74,7 +81,7 @@ async function getOrCreateGamingEvent(env) {
       (title, date, day, year, type, description, price,
        spots_total, spots_taken, slug, event_date,
        start_time, end_time, price_cents, location, active)
-    VALUES (?, ?, ?, ?, 'gaming', ?, '5 €', 30, 0, ?, ?, '20:00', '23:00', 500, 'Espace Ködörö — Caussade', 1)
+    VALUES (?, ?, ?, ?, 'gaming', ?, '5 €', 30, 0, ?, ?, '20:00', '00:00', 500, 'Espace Ködörö — Caussade', 1)
   `).bind(
     'Le Lobby',
     formatFrDate(nextDate),

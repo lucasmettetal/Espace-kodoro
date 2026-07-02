@@ -14,6 +14,12 @@ function formatDate(isoDate: string): string {
   return cap(d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }));
 }
 
+function formatTime(t: string | undefined): string {
+  if (!t) return '';
+  if (t === '00:00') return 'minuit';
+  return t.replace(':00', 'h');
+}
+
 export function LobbyBanner() {
   const [event, setEvent] = useState<EventInfo | null>(null);
 
@@ -26,78 +32,77 @@ export function LobbyBanner() {
 
   if (!event) return null;
 
-  const timeLabel = [
-    event.start_time?.replace(':00', 'h'),
-    event.end_time?.replace(':00', 'h'),
-  ].filter(Boolean).join(' – ');
+  const start     = formatTime(event.start_time);
+  const end       = formatTime(event.end_time);
+  const timeStr   = [start, end].filter(Boolean).join(' – ');
+  const placesStr = event.is_open
+    ? `${event.available} place${event.available > 1 ? 's' : ''} dispo`
+    : 'Complet';
 
   return (
-    <div style={{
-      background:   '#160d0d',
-      borderBottom: '1px solid rgba(201,167,0,0.2)',
-      marginTop:    72,  /* pousse le banner sous la nav fixée (height: 72px) */
-    }}>
+    <div style={{ background: '#160d0d', borderBottom: '1px solid rgba(201,167,0,0.2)', marginTop: 72 }}>
       <div style={{
         maxWidth: 1280,
         margin: '0 auto',
-        padding: 'clamp(1rem, 2.5vw, 1.5rem) clamp(2rem, 8vw, 8rem)',
+        padding: 'clamp(0.875rem, 2vw, 1.125rem) clamp(1.5rem, 8vw, 8rem)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        flexWrap: 'wrap',
         gap: '1rem',
+        flexWrap: 'wrap',
       }}>
 
-        {/* Infos */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
+        {/* Gauche : badge + infos */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', flexWrap: 'wrap', flex: '1 1 auto', minWidth: 0 }}>
+
+          {/* Badge plein */}
           <span style={{
             fontFamily: "'DM Mono', monospace",
             fontSize: '0.55rem',
             letterSpacing: '0.18em',
             textTransform: 'uppercase',
-            color: '#C9A700',
-            border: '1px solid rgba(201,167,0,0.4)',
-            padding: '0.2rem 0.55rem',
+            color: '#160d0d',
+            background: '#C9A700',
+            padding: '0.22rem 0.6rem',
             whiteSpace: 'nowrap',
+            flexShrink: 0,
           }}>
-            Prochain Le Lobby
+            🎮 Le Lobby
           </span>
 
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
+          {/* Texte principal */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.65rem', flexWrap: 'wrap' }}>
+              <span style={{
+                fontFamily: "'Playfair Display', Georgia, serif",
+                fontSize: 'clamp(0.9rem, 1.8vw, 1.05rem)',
+                fontWeight: 700,
+                color: '#F4EFE4',
+                whiteSpace: 'nowrap',
+              }}>
+                Soirée gaming à Caussade
+              </span>
+              <span style={{
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: '0.82rem',
+                color: 'rgba(244,239,228,0.55)',
+                whiteSpace: 'nowrap',
+              }}>
+                {formatDate(event.event_date)}{timeStr ? ` · ${timeStr}` : ''}
+                {' '}·{' '}
+                <span style={{ color: event.is_open ? '#81C784' : '#E57373', fontWeight: 500 }}>
+                  {placesStr}
+                </span>
+              </span>
+            </div>
             <span style={{
-              fontFamily: "'Playfair Display', Georgia, serif",
-              fontSize: 'clamp(0.95rem, 2vw, 1.15rem)',
-              fontWeight: 700,
-              color: '#F4EFE4',
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: '0.7rem',
+              color: 'rgba(244,239,228,0.3)',
+              letterSpacing: '0.02em',
             }}>
-              {formatDate(event.event_date)}
+              Consoles · rétro · multijoueur · PC/LAN
             </span>
-            {timeLabel && (
-              <span style={{
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: '0.85rem',
-                color: 'rgba(244,239,228,0.5)',
-              }}>
-                · {timeLabel}
-              </span>
-            )}
-            {event.is_open ? (
-              <span style={{
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: '0.8rem',
-                color: '#81C784',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.3rem',
-              }}>
-                <span style={{ fontSize: '0.6rem' }}>●</span>
-                {event.available} place{event.available > 1 ? 's' : ''} dispo
-              </span>
-            ) : (
-              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8rem', color: '#E57373' }}>
-                Complet
-              </span>
-            )}
           </div>
         </div>
 
@@ -109,13 +114,14 @@ export function LobbyBanner() {
             background: '#C9A700',
             color: '#160d0d',
             fontFamily: "'DM Sans', sans-serif",
-            fontSize: '0.75rem',
+            fontSize: '0.78rem',
             fontWeight: 700,
             letterSpacing: '0.07em',
             textTransform: 'uppercase',
             textDecoration: 'none',
-            padding: '0.6rem 1.4rem',
+            padding: '0.7rem 1.5rem',
             whiteSpace: 'nowrap',
+            flexShrink: 0,
             transition: 'background 0.18s',
           }}
           onMouseEnter={e => (e.currentTarget.style.background = '#D4B930')}
