@@ -27,12 +27,12 @@ function Home() {
   return (
     <>
       <Navigation />
+      <LobbyBanner />
       <Hero />
       <About />
       <Services />
       <Spaces />
       <Therapists />
-      <LobbyBanner />
       <ActivitiesHighlight />
       <Events />
       <Tarifs />
