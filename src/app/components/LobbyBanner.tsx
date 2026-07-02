@@ -33,9 +33,9 @@ export function LobbyBanner() {
 
   return (
     <div style={{
-      background: '#160d0d',
-      borderTop:    '1px solid rgba(201,167,0,0.18)',
-      borderBottom: '1px solid rgba(201,167,0,0.12)',
+      background:   '#160d0d',
+      borderBottom: '1px solid rgba(201,167,0,0.2)',
+      marginTop:    72,  /* pousse le banner sous la nav fixée (height: 72px) */
     }}>
       <div style={{
         maxWidth: 1280,
