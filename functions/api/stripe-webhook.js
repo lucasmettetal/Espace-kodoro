@@ -53,8 +53,23 @@ async function upsertContact(env, { email, first_name, last_name, phone, list_na
   }
 }
 
+// ── Formatage date FR ─────────────────────────────────────────────────────────
+function formatEventDateFr(isoDate) {
+  if (!isoDate) return '';
+  const MOIS  = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  const JOURS = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+  const d     = new Date(isoDate + 'T12:00:00');
+  const jour  = JOURS[d.getDay()];
+  return `${jour.charAt(0).toUpperCase() + jour.slice(1)} ${d.getDate()} ${MOIS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function formatTimeFr(time) {
+  if (!time) return '';
+  return time.replace(':00', 'h').replace(':', 'h');
+}
+
 // ── Email HTML de confirmation ────────────────────────────────────────────────
-function buildConfirmationEmail({ customerName, quantity, participants, eventDate, startTime, endTime, location, amountEuros, siteUrl }) {
+function buildConfirmationEmail({ customerName, quantity, participants, eventTitle, eventDate, startTime, endTime, location, amountEuros, siteUrl }) {
   const participantList = participants.length > 0
     ? `<ul style="margin:0.5rem 0 0;padding-left:1.25rem;color:#5F3636;">${participants.map(p => `<li>${p.full_name}${p.is_minor ? ` <span style="color:#E65100;font-size:0.85em;">(mineur)</span>` : ''}</li>`).join('')}</ul>`
     : '';
@@ -90,7 +105,7 @@ function buildConfirmationEmail({ customerName, quantity, participants, eventDat
                 <p style="margin:0 0 0.75rem;font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:#C9A700;">Détails de votre réservation</p>
                 <table cellpadding="0" cellspacing="0">
                   ${[
-                    ['Événement', 'Soirée Gaming — Espace Ködörö'],
+                    ['Événement', `${eventTitle ?? 'Le Lobby'} — Espace Ködörö`],
                     ['Date',      eventDate],
                     ['Horaire',   `${startTime} – ${endTime}`],
                     ['Lieu',      location],
@@ -148,24 +163,30 @@ function buildConfirmationEmail({ customerName, quantity, participants, eventDat
 }
 
 // ── Envoi via Resend ──────────────────────────────────────────────────────────
-async function sendConfirmationEmail({ env, to, customerName, reservation, participants }) {
+async function sendConfirmationEmail({ env, to, customerName, reservation, participants, event }) {
   if (!env.RESEND_API_KEY) {
     console.warn('[stripe-webhook] RESEND_API_KEY non configurée — email non envoyé.');
     return;
   }
 
-  const siteUrl    = (env.SITE_URL ?? 'https://www.espace-kodoro.fr').replace(/\/$/, '');
-  const from       = env.EMAIL_FROM ?? 'Espace Ködörö <onboarding@resend.dev>';
+  const siteUrl     = (env.SITE_URL ?? 'https://www.espace-kodoro.fr').replace(/\/$/, '');
+  const from        = env.EMAIL_FROM ?? 'Espace Ködörö <onboarding@resend.dev>';
   const amountEuros = reservation.amount_cents ? (reservation.amount_cents / 100).toFixed(2) : '?';
+  const eventTitle  = event?.title ?? 'Le Lobby';
+  const eventDate   = event?.event_date ? formatEventDateFr(event.event_date) : 'Prochaine soirée';
+  const startTime   = event?.start_time ? formatTimeFr(event.start_time) : '20h';
+  const endTime     = event?.end_time   ? formatTimeFr(event.end_time)   : '23h';
+  const location    = event?.location   ?? 'Espace Ködörö — Caussade';
 
   const html = buildConfirmationEmail({
     customerName,
-    quantity:     reservation.quantity,
+    quantity: reservation.quantity,
     participants,
-    eventDate:    'Vendredi 26 juin 2026',
-    startTime:    '20h',
-    endTime:      '23h',
-    location:     'Espace Ködörö — Caussade',
+    eventTitle,
+    eventDate,
+    startTime,
+    endTime,
+    location,
     amountEuros,
     siteUrl,
   });
@@ -180,7 +201,7 @@ async function sendConfirmationEmail({ env, to, customerName, reservation, parti
       from,
       reply_to: env.EMAIL_REPLY_TO ?? 'gaming.kodoro@gmail.com',
       to:      [to],
-      subject: `Réservation confirmée — Soirée Gaming du 26 juin · Espace Ködörö`,
+      subject: `Réservation confirmée — ${eventTitle} · Espace Ködörö`,
       html,
     }),
   });
@@ -365,6 +386,10 @@ export async function onRequestPost({ request, env }) {
             'SELECT full_name, is_minor, age FROM participants WHERE reservation_id = ?'
           ).bind(reservationId).all();
 
+          const event = await env.DB.prepare(
+            'SELECT * FROM events WHERE id = ?'
+          ).bind(reservation.event_id).first();
+
           const firstName = reservation.customer_name?.split(' ')[0] ?? null;
           const lastName  = reservation.customer_name?.split(' ').slice(1).join(' ') || null;
 
@@ -394,6 +419,7 @@ export async function onRequestPost({ request, env }) {
             customerName: reservation.customer_name,
             reservation,
             participants: participants ?? [],
+            event,
           });
         }
         break;

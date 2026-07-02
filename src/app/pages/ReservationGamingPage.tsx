@@ -3,19 +3,14 @@ import { Link, useNavigate } from 'react-router';
 import { ActivityLayout } from './ActivityLayout';
 import { useUtm } from '../hooks/useUtm';
 
-// ─────────────────────────────────────────────────────────────
-//  CONSTANTES — à modifier si l'événement change
-// ─────────────────────────────────────────────────────────────
-// Le slug doit correspondre à la valeur insérée en base via schema-reservations.sql
-const EVENT_SLUG = 'gaming-26-juin-2026';
-
-// Nombre maximum de places par réservation (limité côté UI ; le backend vérifie aussi)
 const MAX_PLACES_PER_BOOKING = 4;
-
-// Prix affiché — le montant réel est calculé par le serveur depuis price_cents en base
 const DISPLAY_PRICE_PER_PERSON = 5;
 
-// ─────────────────────────────────────────────────────────────
+function formatEventDate(isoDate: string): string {
+  const d = new Date(isoDate + 'T12:00:00');
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  return cap(d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
+}
 
 type Participant = {
   full_name: string;
@@ -146,7 +141,7 @@ export function ReservationGamingPage() {
   const [eventError, setEventError] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/event-availability?slug=${EVENT_SLUG}`)
+    fetch('/api/event-availability?type=gaming')
       .then(r => {
         if (!r.ok) throw new Error('not found');
         return r.json();
@@ -289,14 +284,14 @@ export function ReservationGamingPage() {
 
           <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 'clamp(1.75rem, 4vw, 3rem)', fontWeight: 700, lineHeight: 1.15, color: '#F4EFE4', margin: 0, marginBottom: '1.5rem' }}>
             Réserver ma place —{' '}
-            <em style={{ fontStyle: 'italic', color: '#C9A700' }}>Soirée Gaming</em>
+            <em style={{ fontStyle: 'italic', color: '#C9A700' }}>{eventInfo?.title ?? 'Le Lobby'}</em>
           </h1>
 
           {/* Infos événement */}
           {!loadingEvent && !eventError && eventInfo && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem' }}>
               {[
-                { label: 'Date',          value: eventInfo.event_date === '2026-06-26' ? 'Vendredi 26 juin 2026' : eventInfo.event_date },
+                { label: 'Date',          value: formatEventDate(eventInfo.event_date) },
                 { label: 'Horaire',       value: `${eventInfo.start_time} – ${eventInfo.end_time}` },
                 { label: 'Lieu',          value: eventInfo.location },
                 { label: 'Participation', value: `${DISPLAY_PRICE_PER_PERSON} € / personne` },

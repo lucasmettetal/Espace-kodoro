@@ -75,13 +75,27 @@ function FaqItem({ q, a }: { q: string; a: string }) {
   );
 }
 
+function formatEventDate(isoDate: string): string {
+  const d = new Date(isoDate + 'T12:00:00');
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  return cap(d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
+}
+
 export function GamingPage() {
   const [cfg, setCfg] = useState<SiteConfig>(DEFAULTS);
+  const [nextEventDate, setNextEventDate] = useState<string>('');
 
   useEffect(() => {
     fetch('/api/config')
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data) setCfg({ ...DEFAULTS, ...data }); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/event-availability?type=gaming')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.event_date) setNextEventDate(data.event_date); })
       .catch(() => {});
   }, []);
 
@@ -106,8 +120,8 @@ export function GamingPage() {
             Activité régulière — Espace Ködörö
           </p>
           <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 'clamp(2.2rem, 5vw, 4rem)', fontWeight: 700, lineHeight: 1.1, color: '#F4EFE4', margin: 0, marginBottom: '1.25rem', letterSpacing: '-0.02em' }}>
-            Soirées <em style={{ fontStyle: 'italic', color: '#C9A700' }}>Gaming</em>
-            <br />à Caussade
+            <em style={{ fontStyle: 'italic', color: '#C9A700' }}>Le Lobby</em>
+            <br />Gaming à Caussade
           </h1>
           <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 'clamp(1rem, 1.8vw, 1.15rem)', lineHeight: 1.75, color: 'rgba(244,239,228,0.75)', maxWidth: 600, marginBottom: '1.25rem' }}>
             Un rendez-vous pour jouer, rencontrer d'autres joueurs et construire une communauté gaming locale.
@@ -169,7 +183,7 @@ export function GamingPage() {
                 Prochaine soirée
               </p>
               <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 700, lineHeight: 1.2, color: '#5F3636', margin: 0, marginBottom: '2rem' }}>
-                {cfg.gaming_date || 'Date à confirmer'}
+                {nextEventDate ? formatEventDate(nextEventDate) : (cfg.gaming_date || 'Date à confirmer')}
               </h2>
               <dl style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', marginBottom: '2rem' }}>
                 {[

@@ -3,6 +3,15 @@
 
 import { requireAuth } from '../_auth.js';
 
+function formatEventDateFr(isoDate) {
+  if (!isoDate) return '';
+  const MOIS  = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  const JOURS = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+  const d     = new Date(isoDate + 'T12:00:00');
+  const jour  = JOURS[d.getDay()];
+  return `${jour.charAt(0).toUpperCase() + jour.slice(1)} ${d.getDate()} ${MOIS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -120,8 +129,15 @@ export async function onRequestPost({ request, env }) {
   }
 
   try {
-    const slug = event_slug ?? 'gaming-26-juin-2026';
-    const event = await env.DB.prepare('SELECT * FROM events WHERE slug = ?').bind(slug).first();
+    let event;
+    if (event_slug) {
+      event = await env.DB.prepare('SELECT * FROM events WHERE slug = ?').bind(event_slug).first();
+    } else {
+      // Sans slug explicite → prochain Le Lobby actif
+      event = await env.DB.prepare(
+        "SELECT * FROM events WHERE type = 'gaming' AND active = 1 AND event_date >= date('now') ORDER BY event_date ASC LIMIT 1"
+      ).first();
+    }
     if (!event) return Response.json({ error: 'Événement introuvable' }, { status: 404, headers: cors });
 
     // Créer la réservation directement en statut paid
@@ -143,9 +159,13 @@ export async function onRequestPost({ request, env }) {
 
     // Envoyer l'email de confirmation si Resend est configuré
     if (env.RESEND_API_KEY) {
-      const siteUrl   = (env.SITE_URL ?? 'https://www.espace-kodoro.fr').replace(/\/$/, '');
-      const from      = env.EMAIL_FROM ?? 'Espace Ködörö <onboarding@resend.dev>';
+      const siteUrl    = (env.SITE_URL ?? 'https://www.espace-kodoro.fr').replace(/\/$/, '');
+      const from       = env.EMAIL_FROM ?? 'Espace Ködörö <onboarding@resend.dev>';
       const euroAmount = amount_cents ? (amount_cents / 100).toFixed(2) : null;
+      const eventTitle = event.title ?? 'Le Lobby';
+      const eventDate  = event.event_date ? formatEventDateFr(event.event_date) : '';
+      const horaire    = (event.start_time && event.end_time) ? `${event.start_time.replace(':00','h')} – ${event.end_time.replace(':00','h')}` : '20h – 23h';
+      const lieu       = event.location ?? 'Espace Ködörö — Caussade';
 
       const participantList = (participants ?? []).length > 0
         ? `<ul style="margin:0.5rem 0 0;padding-left:1.25rem;color:#5F3636;">${(participants ?? []).map(p => `<li>${p.full_name}${p.is_minor ? ` <span style="color:#E65100;font-size:0.85em;">(mineur)</span>` : ''}</li>`).join('')}</ul>`
@@ -163,15 +183,15 @@ export async function onRequestPost({ request, env }) {
 </td></tr>
 <tr><td style="padding:2rem;">
   <p style="margin:0 0 1.25rem;color:#5F3636;font-size:1rem;">Bonjour ${customer_name},</p>
-  <p style="margin:0 0 1.5rem;color:#6B5D52;line-height:1.75;">Votre réservation pour la soirée Gaming est bien enregistrée. Nous avons hâte de vous accueillir !</p>
+  <p style="margin:0 0 1.5rem;color:#6B5D52;line-height:1.75;">Votre réservation est bien enregistrée. Nous avons hâte de vous accueillir !</p>
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#FBF7EF;border:1px solid rgba(95,54,54,0.1);margin-bottom:1.5rem;">
   <tr><td style="padding:1.25rem;">
     <p style="margin:0 0 0.75rem;font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:#C9A700;">Détails de votre réservation</p>
     <table cellpadding="0" cellspacing="0">
-      <tr><td style="padding:0.3rem 1rem 0.3rem 0;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:#9B8F89;">Événement</td><td style="padding:0.3rem 0;font-size:0.9rem;color:#5F3636;font-weight:500;">Soirée Gaming — Espace Ködörö</td></tr>
-      <tr><td style="padding:0.3rem 1rem 0.3rem 0;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:#9B8F89;">Date</td><td style="padding:0.3rem 0;font-size:0.9rem;color:#5F3636;font-weight:500;">Vendredi 26 juin 2026</td></tr>
-      <tr><td style="padding:0.3rem 1rem 0.3rem 0;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:#9B8F89;">Horaire</td><td style="padding:0.3rem 0;font-size:0.9rem;color:#5F3636;font-weight:500;">20h – 23h</td></tr>
-      <tr><td style="padding:0.3rem 1rem 0.3rem 0;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:#9B8F89;">Lieu</td><td style="padding:0.3rem 0;font-size:0.9rem;color:#5F3636;font-weight:500;">Espace Ködörö — Caussade</td></tr>
+      <tr><td style="padding:0.3rem 1rem 0.3rem 0;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:#9B8F89;">Événement</td><td style="padding:0.3rem 0;font-size:0.9rem;color:#5F3636;font-weight:500;">${eventTitle} — Espace Ködörö</td></tr>
+      ${eventDate ? `<tr><td style="padding:0.3rem 1rem 0.3rem 0;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:#9B8F89;">Date</td><td style="padding:0.3rem 0;font-size:0.9rem;color:#5F3636;font-weight:500;">${eventDate}</td></tr>` : ''}
+      <tr><td style="padding:0.3rem 1rem 0.3rem 0;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:#9B8F89;">Horaire</td><td style="padding:0.3rem 0;font-size:0.9rem;color:#5F3636;font-weight:500;">${horaire}</td></tr>
+      <tr><td style="padding:0.3rem 1rem 0.3rem 0;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:#9B8F89;">Lieu</td><td style="padding:0.3rem 0;font-size:0.9rem;color:#5F3636;font-weight:500;">${lieu}</td></tr>
       <tr><td style="padding:0.3rem 1rem 0.3rem 0;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:#9B8F89;">Places</td><td style="padding:0.3rem 0;font-size:0.9rem;color:#5F3636;font-weight:500;">${quantity} place${quantity > 1 ? 's' : ''}</td></tr>
       ${euroAmount ? `<tr><td style="padding:0.3rem 1rem 0.3rem 0;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:#9B8F89;">Montant</td><td style="padding:0.3rem 0;font-size:0.9rem;color:#5F3636;font-weight:500;">${euroAmount} €</td></tr>` : ''}
     </table>
@@ -202,7 +222,7 @@ export async function onRequestPost({ request, env }) {
           from,
           reply_to: env.EMAIL_REPLY_TO ?? 'gaming.kodoro@gmail.com',
           to: [email],
-          subject: `Réservation confirmée — Soirée Gaming du 26 juin · Espace Ködörö`,
+          subject: `Réservation confirmée — ${eventTitle} · Espace Ködörö`,
           html,
         }),
       });
