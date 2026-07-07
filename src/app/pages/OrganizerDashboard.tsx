@@ -32,6 +32,7 @@ type Reservation = {
   quantity: number;
   status: 'pending' | 'paid' | 'cancelled' | 'refunded';
   amount_cents: number;
+  payment_type: 'stripe' | 'first_visit' | 'pass_included' | null;
   stripe_session_id: string;
   utm_source: string;
   utm_medium: string;
@@ -911,11 +912,23 @@ export function OrganizerDashboard() {
                             <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.7rem', background: '#F4EFE4', color: '#5F3636', padding: '0.2rem 0.55rem', fontWeight: 600 }}>
                               {r.quantity} pl.
                             </span>
-                            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.05em', textTransform: 'uppercase', padding: '0.2rem 0.6rem', background: sc?.bg, color: sc?.color }}>
-                              {STATUS_LABEL[r.status]}
-                            </span>
+                            {r.payment_type === 'first_visit' ? (
+                              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.05em', textTransform: 'uppercase', padding: '0.2rem 0.6rem', background: 'rgba(201,167,0,0.15)', color: '#7A6200' }}>
+                                Offert
+                              </span>
+                            ) : r.payment_type === 'pass_included' ? (
+                              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.05em', textTransform: 'uppercase', padding: '0.2rem 0.6rem', background: 'rgba(33,150,243,0.12)', color: '#0D47A1' }}>
+                                Pass
+                              </span>
+                            ) : (
+                              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.05em', textTransform: 'uppercase', padding: '0.2rem 0.6rem', background: sc?.bg, color: sc?.color }}>
+                                {STATUS_LABEL[r.status]}
+                              </span>
+                            )}
                             <span style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: '0.95rem', fontWeight: 700, color: '#5F3636', minWidth: '3.5rem', textAlign: 'right' }}>
-                              {r.amount_cents ? `${(r.amount_cents / 100).toFixed(2)} €` : '—'}
+                              {r.payment_type === 'first_visit' || r.payment_type === 'pass_included'
+                                ? '—'
+                                : r.amount_cents ? `${(r.amount_cents / 100).toFixed(2)} €` : '—'}
                             </span>
                           </div>
 

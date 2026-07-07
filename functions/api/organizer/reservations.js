@@ -43,6 +43,7 @@ export async function onRequestGet({ request, env }) {
         r.quantity,
         r.status,
         r.amount_cents,
+        r.payment_type,
         r.stripe_session_id,
         r.utm_source,
         r.utm_medium,
