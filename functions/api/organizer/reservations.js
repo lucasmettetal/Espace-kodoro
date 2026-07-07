@@ -33,7 +33,7 @@ export async function onRequestGet({ request, env }) {
 
   try {
     // Construire la requête selon le rôle et les filtres
-    // GROUP_CONCAT agrège les noms des participants en une seule chaîne
+    // Sous-requêtes corrélées pour éviter le produit cartésien participants × équipements
     const base = `
       SELECT
         r.id,
@@ -52,14 +52,12 @@ export async function onRequestGet({ request, env }) {
         e.title     AS event_title,
         e.slug      AS event_slug,
         e.event_date,
-        GROUP_CONCAT(p.full_name, ' · ') AS participant_names,
-        GROUP_CONCAT(CASE WHEN p.is_minor = 1 THEN p.full_name END, ' · ') AS minor_names,
-        SUM(p.is_minor) AS minor_count,
-        GROUP_CONCAT(eq.equipment_type, ', ') AS equipment
+        (SELECT GROUP_CONCAT(p.full_name, ' · ') FROM participants p WHERE p.reservation_id = r.id)                              AS participant_names,
+        (SELECT GROUP_CONCAT(p.full_name, ' · ') FROM participants p WHERE p.reservation_id = r.id AND p.is_minor = 1)           AS minor_names,
+        (SELECT COALESCE(SUM(p.is_minor), 0)     FROM participants p WHERE p.reservation_id = r.id)                              AS minor_count,
+        (SELECT GROUP_CONCAT(eq.equipment_type, ', ') FROM equipment_offers eq WHERE eq.reservation_id = r.id)                   AS equipment
       FROM reservations r
       JOIN events e ON r.event_id = e.id
-      LEFT JOIN participants p ON p.reservation_id = r.id
-      LEFT JOIN equipment_offers eq ON eq.reservation_id = r.id
     `;
 
     const conditions = [];

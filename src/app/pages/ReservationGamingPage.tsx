@@ -6,6 +6,23 @@ import { useUtm } from '../hooks/useUtm';
 const MAX_PLACES_PER_BOOKING = 4;
 const DISPLAY_PRICE_PER_PERSON = 5;
 
+function getOrCreateDeviceToken(): string {
+  const KEY = 'kodoro_device_token';
+  try {
+    let token = localStorage.getItem(KEY);
+    if (!token) {
+      token = typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : Array.from(crypto.getRandomValues(new Uint8Array(16)))
+            .map(b => b.toString(16).padStart(2, '0')).join('');
+      localStorage.setItem(KEY, token);
+    }
+    return token;
+  } catch {
+    return '';
+  }
+}
+
 function formatEventDate(isoDate: string): string {
   const d = new Date(isoDate + 'T12:00:00');
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -212,9 +229,10 @@ export function ReservationGamingPage() {
           is_minor:  p.is_minor,
           age:       p.is_minor && p.age ? p.age : null,
         })),
-        equipment:         form.equipment,
-        comment:           form.comment.trim() || null,
+        equipment:          form.equipment,
+        comment:            form.comment.trim() || null,
         newsletter_consent: form.newsletter_consent,
+        device_token:       getOrCreateDeviceToken(),
         utm_source:   utmParams.utm_source,
         utm_medium:   utmParams.utm_medium,
         utm_campaign: utmParams.utm_campaign,

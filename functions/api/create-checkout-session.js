@@ -164,7 +164,13 @@ export async function onRequestPost({ request, env }) {
     referrer,
     landing_page,
     newsletter_consent = false,
+    device_token       = null,
   } = body;
+
+  // Sanitize device_token : chaîne alphanumérique/tirets, max 64 chars
+  const safeDeviceToken = (typeof device_token === 'string' && /^[a-zA-Z0-9\-]{8,64}$/.test(device_token))
+    ? device_token
+    : null;
 
   // Validation des champs obligatoires
   if (!event_id || !customer_name?.trim() || !email?.trim() || !phone?.trim()) {
@@ -234,9 +240,17 @@ export async function onRequestPost({ request, env }) {
 
   // ── 4ter. Première visite ? → réservation gratuite ──────────────────────
   if (!activePass) {
-    const priorVisit = await env.DB.prepare(
+    // Vérification email
+    let priorVisit = await env.DB.prepare(
       `SELECT id FROM reservations WHERE email = ? AND status = 'paid' LIMIT 1`
     ).bind(normalizedEmail).first();
+
+    // Vérification device_token (si fourni et différent d'une éventuelle correspondance email)
+    if (!priorVisit && safeDeviceToken) {
+      priorVisit = await env.DB.prepare(
+        `SELECT id FROM reservations WHERE device_token = ? AND status = 'paid' LIMIT 1`
+      ).bind(safeDeviceToken).first();
+    }
 
     if (!priorVisit) {
       let firstVisitReservationId;
@@ -249,13 +263,14 @@ export async function onRequestPost({ request, env }) {
             (event_id, customer_name, email, phone, quantity, status,
              amount_cents, utm_source, utm_medium, utm_campaign,
              utm_content, utm_term, referrer, landing_page, comment,
-             newsletter_consent, payment_type)
-          VALUES (?, ?, ?, ?, ?, 'paid', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'first_visit')
+             newsletter_consent, payment_type, device_token)
+          VALUES (?, ?, ?, ?, ?, 'paid', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'first_visit', ?)
         `).bind(
           event_id, customer_name.trim(), normalizedEmail, phone.trim(), qty,
           utm_source ?? null, utm_medium ?? null, utm_campaign ?? null,
           utm_content ?? null, utm_term ?? null, referrer ?? null, landing_page ?? null,
           comment?.trim() || null, newsletter_consent ? 1 : 0,
+          safeDeviceToken,
         ).run();
         firstVisitReservationId = result.meta.last_row_id;
         // Si last_row_id est 0, l'INSERT a été ignoré (doublon) — retourner quand même succès
@@ -301,8 +316,8 @@ export async function onRequestPost({ request, env }) {
           (event_id, customer_name, email, phone, quantity, status,
            amount_cents, utm_source, utm_medium, utm_campaign,
            utm_content, utm_term, referrer, landing_page, comment,
-           newsletter_consent, pass_id, payment_type)
-        VALUES (?, ?, ?, ?, ?, 'paid', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pass_included')
+           newsletter_consent, pass_id, payment_type, device_token)
+        VALUES (?, ?, ?, ?, ?, 'paid', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pass_included', ?)
       `).bind(
         event_id,
         customer_name.trim(),
@@ -319,6 +334,7 @@ export async function onRequestPost({ request, env }) {
         comment?.trim() || null,
         newsletter_consent ? 1 : 0,
         activePass.id,
+        safeDeviceToken,
       ).run();
 
       passReservationId = reservationResult.meta.last_row_id;
@@ -383,8 +399,8 @@ export async function onRequestPost({ request, env }) {
         (event_id, customer_name, email, phone, quantity, status,
          amount_cents, utm_source, utm_medium, utm_campaign,
          utm_content, utm_term, referrer, landing_page, comment,
-         newsletter_consent, expires_at)
-      VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         newsletter_consent, expires_at, device_token)
+      VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       event_id,
       customer_name.trim(),
@@ -402,6 +418,7 @@ export async function onRequestPost({ request, env }) {
       comment?.trim() || null,
       newsletter_consent ? 1 : 0,
       expiresAt,
+      safeDeviceToken,
     ).run();
 
     reservationId = insertResult.meta.last_row_id;
